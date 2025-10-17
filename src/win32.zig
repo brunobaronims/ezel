@@ -19,6 +19,9 @@ const DWORD = windows.DWORD;
 const ATOM = windows.ATOM;
 const BOOL = windows.BOOL;
 const POINT = windows.POINT;
+const HDC = windows.HDC;
+const RECT = windows.RECT;
+const BYTE = windows.BYTE;
 
 const WINAPI: std.builtin.CallingConvention = if (builtin.cpu.arch == .x86) .{ .x86_stdcall = .{} } else .c;
 
@@ -46,6 +49,20 @@ const MSG = extern struct {
     lParam: LPARAM,
     time: DWORD,
     pt: POINT,
+};
+
+const PAINTSTRUCT = extern struct {
+    hdc: ?HDC = null,
+    fErase: BOOL = 0,
+    rcPaint: RECT = .{
+        .bottom = 0,
+        .left = 0,
+        .right = 0,
+        .top = 0,
+    },
+    fRestore: BOOL = 0,
+    fIncUpdate: BOOL = 0,
+    rgbReserved: [32]BYTE = std.mem.zeroes([32]BYTE),
 };
 
 extern "user32" fn DefWindowProcW(
@@ -79,8 +96,17 @@ extern "user32" fn GetMessageW(
 ) callconv(WINAPI) BOOL;
 extern "user32" fn TranslateMessage(lpMsg: *const MSG) callconv(WINAPI) BOOL;
 extern "user32" fn DispatchMessageW(lpMsg: *const MSG) callconv(WINAPI) LRESULT;
+extern "user32" fn BeginPaint(hWnd: HWND, lpPaint: *PAINTSTRUCT) callconv(WINAPI) HDC;
+extern "user32" fn EndPaint(hWnd: HWND, lpPaint: *const PAINTSTRUCT) callconv(WINAPI) BOOL;
+extern "user32" fn FillRect(
+    hDC: HDC,
+    lprc: *const RECT,
+    hbr: HBRUSH,
+) callconv(WINAPI) i32;
 
 const WM_DESTROY = 0x2;
+const WM_LBUTTONDOWN = 0x0201;
+const WM_PAINT = 0x000F;
 
 const WS_OVERLAPPED = 0;
 const WS_CAPTION = 0x00C00000;
@@ -95,10 +121,13 @@ const WS_OVERLAPPEDWINDOW =
     WS_THICKFRAME |
     WS_MINIMIZEBOX |
     WS_MAXIMIZEBOX;
+
 const CW_USEDEFAULT: c_int = -2147483648;
 
 const SW_HIDE = 0x1;
 const SW_SHOW = 0x5;
+
+const COLOR_WINDOW = 5;
 
 fn windowProc(
     hwnd: HWND,
@@ -107,6 +136,17 @@ fn windowProc(
     lParam: LPARAM,
 ) callconv(WINAPI) LRESULT {
     switch (uMsg) {
+        WM_PAINT => {
+            var ps: PAINTSTRUCT = .{};
+            const hdc = BeginPaint(hwnd, &ps);
+
+            const hbr: HBRUSH = @as(HBRUSH, @ptrFromInt(COLOR_WINDOW + 1));
+            _ = FillRect(hdc, &ps.rcPaint, hbr);
+
+            _ = EndPaint(hwnd, &ps);
+
+            return 0;
+        },
         WM_DESTROY => {
             PostQuitMessage(0);
             return 0;
