@@ -1,6 +1,8 @@
 const std = @import("std");
-const win32 = @import("win32.zig");
+const user32 = @import("windows/user32.zig");
 
 pub fn init() void {
-    _ = win32.wWinMain();
+    const hwnd = user32.NewApplication() catch unreachable;
+    
+    user32.run(hwnd);
 }

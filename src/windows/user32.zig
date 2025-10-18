@@ -1,5 +1,4 @@
 const std = @import("std");
-const builtin = @import("builtin");
 const windows = std.os.windows;
 
 const HWND = windows.HWND;
@@ -23,9 +22,12 @@ const HDC = windows.HDC;
 const RECT = windows.RECT;
 const BYTE = windows.BYTE;
 
-const WINAPI: std.builtin.CallingConvention = if (builtin.cpu.arch == .x86) .{ .x86_stdcall = .{} } else .c;
-
-const WNDPROC = *const fn (HWND, UINT, WPARAM, LPARAM) callconv(WINAPI) LRESULT;
+const WNDPROC = *const fn (
+    HWND,
+    UINT,
+    WPARAM,
+    LPARAM,
+) callconv(.winapi) LRESULT;
 
 const WNDCLASSEXW = extern struct {
     cbSize: UINT = 0,
@@ -70,8 +72,8 @@ extern "user32" fn DefWindowProcW(
     Msg: UINT,
     wParam: WPARAM,
     lParam: LPARAM,
-) callconv(WINAPI) LRESULT;
-extern "user32" fn PostQuitMessage(hExitCode: i32) callconv(WINAPI) void;
+) callconv(.winapi) LRESULT;
+extern "user32" fn PostQuitMessage(hExitCode: i32) callconv(.winapi) void;
 extern "user32" fn CreateWindowExW(
     dwExStyle: DWORD,
     lpClassName: ?LPCWSTR,
@@ -85,24 +87,25 @@ extern "user32" fn CreateWindowExW(
     hMenu: ?HMENU,
     hInstance: ?HINSTANCE,
     lpParam: ?*anyopaque,
-) callconv(WINAPI) ?HWND;
-extern "user32" fn RegisterClassExW(*const WNDCLASSEXW) callconv(WINAPI) ATOM;
-extern "user32" fn ShowWindow(hWnd: HWND, nCmdShow: i32) callconv(WINAPI) BOOL;
+) callconv(.winapi) ?HWND;
+extern "user32" fn RegisterClassExW(*const WNDCLASSEXW) callconv(.winapi) ATOM;
+extern "user32" fn ShowWindow(hWnd: HWND, nCmdShow: i32) callconv(.winapi) BOOL;
 extern "user32" fn GetMessageW(
     lpMsg: *MSG,
     hWnd: ?HWND,
     wMsgFilterMin: UINT,
     wMsgFilterMax: UINT,
-) callconv(WINAPI) BOOL;
-extern "user32" fn TranslateMessage(lpMsg: *const MSG) callconv(WINAPI) BOOL;
-extern "user32" fn DispatchMessageW(lpMsg: *const MSG) callconv(WINAPI) LRESULT;
-extern "user32" fn BeginPaint(hWnd: HWND, lpPaint: *PAINTSTRUCT) callconv(WINAPI) HDC;
-extern "user32" fn EndPaint(hWnd: HWND, lpPaint: *const PAINTSTRUCT) callconv(WINAPI) BOOL;
+) callconv(.winapi) BOOL;
+extern "user32" fn TranslateMessage(lpMsg: *const MSG) callconv(.winapi) BOOL;
+extern "user32" fn DispatchMessageW(lpMsg: *const MSG) callconv(.winapi) LRESULT;
+extern "user32" fn BeginPaint(hWnd: HWND, lpPaint: *PAINTSTRUCT) callconv(.winapi) HDC;
+extern "user32" fn EndPaint(hWnd: HWND, lpPaint: *const PAINTSTRUCT) callconv(.winapi) BOOL;
 extern "user32" fn FillRect(
     hDC: HDC,
     lprc: *const RECT,
     hbr: HBRUSH,
-) callconv(WINAPI) i32;
+) callconv(.winapi) i32;
+
 
 const WM_DESTROY = 0x2;
 const WM_LBUTTONDOWN = 0x0201;
@@ -129,12 +132,12 @@ const SW_SHOW = 0x5;
 
 const COLOR_WINDOW = 5;
 
-fn windowProc(
+fn WindowProc(
     hwnd: HWND,
     uMsg: UINT,
     wParam: WPARAM,
     lParam: LPARAM,
-) callconv(WINAPI) LRESULT {
+) callconv(.winapi) LRESULT {
     switch (uMsg) {
         WM_PAINT => {
             var ps: PAINTSTRUCT = .{};
@@ -155,19 +158,19 @@ fn windowProc(
     }
 }
 
-pub fn wWinMain() callconv(WINAPI) i32 {
-    const hModule = windows.kernel32.GetModuleHandleW(null).?;
-    const hInstance: HINSTANCE = @ptrCast(hModule);
+pub fn NewApplication() !HWND {
+    const h_module = windows.kernel32.GetModuleHandleW(null).?;
+    const h_instance: HINSTANCE = @ptrCast(h_module);
 
-    const class_name_utf16 = std.unicode.utf8ToUtf16LeStringLiteral("ZigWindow");
+    const class_name_utf16 = std.unicode.utf8ToUtf16LeStringLiteral("ezel");
     const class_name: LPCWSTR = @ptrCast(class_name_utf16);
-    const window_title_utf16 = std.unicode.utf8ToUtf16LeStringLiteral("ZigWindow");
+    const window_title_utf16 = std.unicode.utf8ToUtf16LeStringLiteral("ezel");
     const window_title: LPCWSTR = @ptrCast(window_title_utf16);
 
     var wc: WNDCLASSEXW = .{
         .cbSize = @sizeOf(WNDCLASSEXW),
-        .lpfnWndProc = windowProc,
-        .hInstance = hInstance,
+        .lpfnWndProc = WindowProc,
+        .hInstance = h_instance,
         .lpszClassName = class_name,
     };
 
@@ -184,21 +187,19 @@ pub fn wWinMain() callconv(WINAPI) i32 {
         CW_USEDEFAULT,
         null,
         null,
-        hInstance,
+        h_instance,
         null,
-    );
+    ) orelse return error.InitFailed;
 
-    if (hwnd == null) {
-        return 0;
-    }
+    return hwnd;
+}
 
-    _ = ShowWindow(hwnd.?, SW_SHOW);
+pub fn run(hwnd: HWND) void {
+    _ = ShowWindow(hwnd, SW_SHOW);
 
     var msg: MSG = undefined;
     while (GetMessageW(&msg, null, 0, 0) > 0) {
         _ = TranslateMessage(&msg);
         _ = DispatchMessageW(&msg);
     }
-
-    return 1;
 }
