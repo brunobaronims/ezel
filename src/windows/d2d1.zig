@@ -8,38 +8,57 @@ const ULONG = windows.ULONG;
 const BOOL = windows.BOOL;
 const UINT32 = u32;
 const D2D1_TAG = u64;
+const UINT = windows.UINT;
+const INT = windows.INT;
+const WICColor = UINT32;
+const double = f64;
+const WICPixelFormatGUID = GUID;
+const BYTE = windows.BYTE;
+const DWORD = windows.DWORD;
+const WICInProcPointer = [*]BYTE;
+const HWND = windows.HWND;
+const REFIID = *const GUID;
 
 const D2D1_RECT_F = extern struct {
-    left: FLOAT = 0,
-    top: FLOAT = 0,
-    right: FLOAT = 0,
-    bottom: FLOAT = 0,
+    left: FLOAT,
+    top: FLOAT,
+    right: FLOAT,
+    bottom: FLOAT,
+};
+
+const D2D1_RECT_U = extern struct {
+    left: UINT32,
+    top: UINT32,
+    right: UINT32,
+    bottom: UINT32,
 };
 
 const D2D1_ROUNDED_RECT = extern struct {
     rect: D2D1_RECT_F,
-    radiusX: FLOAT = 0,
-    radiusY: FLOAT = 0,
+    radiusX: FLOAT,
+    radiusY: FLOAT,
 };
 
-const D2D1_POINT_2F = extern struct { x: FLOAT = 0, y: FLOAT = 0 };
+const D2D1_POINT_2F = extern struct { x: FLOAT, y: FLOAT };
+
+const D2D1_POINT_2U = extern struct { x: UINT32, y: UINT32 };
 
 const D2D1_MATRIX_3X2_F = extern union {
     DUMMYSTRUCTNAME: extern struct {
-        m11: FLOAT = 0,
-        m12: FLOAT = 0,
-        m21: FLOAT = 0,
-        m22: FLOAT = 0,
-        dx: FLOAT = 0,
-        dy: FLOAT = 0,
+        m11: FLOAT,
+        m12: FLOAT,
+        m21: FLOAT,
+        m22: FLOAT,
+        dx: FLOAT,
+        dy: FLOAT,
     },
     DUMMYSTRUCTNAME2: extern struct {
-        _11: FLOAT = 0,
-        _12: FLOAT = 0,
-        _21: FLOAT = 0,
-        _22: FLOAT = 0,
-        _31: FLOAT = 0,
-        _32: FLOAT = 0,
+        _11: FLOAT,
+        _12: FLOAT,
+        _21: FLOAT,
+        _22: FLOAT,
+        _31: FLOAT,
+        _32: FLOAT,
     },
     m: [3][2]FLOAT,
 };
@@ -60,40 +79,96 @@ const D2D1_QUADRATIC_BEZIER_SEGMENT = extern struct {
 const D2D1_TRIANGLE = D2D1_BEZIER_SEGMENT;
 
 const D2D1_SIZE_F = extern struct {
-    width: FLOAT = 0,
-    height: FLOAT = 0,
+    width: FLOAT,
+    height: FLOAT,
+};
+
+const D2D1_SIZE_U = extern struct {
+    width: UINT32,
+    height: UINT32,
 };
 
 const D2D1_ARC_SEGMENT = extern struct {
     point: D2D1_POINT_2F,
     size: D2D1_SIZE_F,
-    rotationAngle: FLOAT = 0,
-    sweepDirection: D2D1_SWEEP_DIRECTION = D2D1_SWEEP_DIRECTION.D2D1_SWEEP_DIRECTION_CLOCKWISE,
-    arcSize: D2D1_ARC_SIZE = D2D1_ARC_SIZE.D2D1_ARC_SIZE_SMALL,
+    rotationAngle: FLOAT,
+    sweepDirection: D2D1_SWEEP_DIRECTION,
+    arcSize: D2D1_ARC_SIZE,
 };
 
 const D2D1_ELLIPSE = extern struct {
     point: D2D1_POINT_2F,
-    radiusX: FLOAT = 0,
-    radiusY: FLOAT = 0,
+    radiusX: FLOAT,
+    radiusY: FLOAT,
 };
 
 const D2D1_STROKE_STYLE_PROPERTIES = extern struct {
-    startCap: D2D1_CAP_STYLE = D2D1_CAP_STYLE.D2D1_CAP_STYLE_FLAT,
-    endCap: D2D1_CAP_STYLE = D2D1_CAP_STYLE.D2D1_CAP_STYLE_FLAT,
-    dashCap: D2D1_CAP_STYLE = D2D1_CAP_STYLE.D2D1_CAP_STYLE_FLAT,
-    lineJoin: D2D1_LINE_JOIN = D2D1_LINE_JOIN.D2D1_LINE_JOIN_BEVEL,
-    miterLimit: FLOAT = 0,
-    dashStyle: D2D1_DASH_STYLE = D2D1_DASH_STYLE.D2D1_DASH_STYLE_DASH,
-    dashOffset: FLOAT = 0,
+    startCap: D2D1_CAP_STYLE,
+    endCap: D2D1_CAP_STYLE,
+    dashCap: D2D1_CAP_STYLE,
+    lineJoin: D2D1_LINE_JOIN,
+    miterLimit: FLOAT,
+    dashStyle: D2D1_DASH_STYLE,
+    dashOffset: FLOAT,
 };
 
 const D2D1_DRAWING_STATE_DESCRIPTION = extern struct {
-    antialiasMode: D2D1_ANTIALIAS_MODE = D2D1_ANTIALIAS_MODE.D2D1_ANTIALIAS_MODE_ALIASED,
-    textAntialiasMode: D2D1_TEXT_ANTIALIAS_MODE = D2D1_TEXT_ANTIALIAS_MODE.D2D1_TEXT_ANTIALIAS_MODE_ALIASED,
+    antialiasMode: D2D1_ANTIALIAS_MODE,
+    textAntialiasMode: D2D1_TEXT_ANTIALIAS_MODE,
     tag1: D2D1_TAG,
     tag2: D2D1_TAG,
     transform: D2D1_MATRIX_3X2_F,
+};
+
+const D2D1_PIXEL_FORMAT = extern struct {
+    format: DXGI_FORMAT,
+    alphaMode: D2D1_ALPHA_MODE,
+};
+
+const D2D1_RENDER_TARGET_PROPERTIES = extern struct {
+    type: D2D1_RENDER_TARGET_TYPE,
+    pixelFormat: D2D1_PIXEL_FORMAT,
+    dpiX: FLOAT,
+    dpiY: FLOAT,
+    usage: D2D1_RENDER_TARGET_USAGE,
+    minLevel: D2D1_FEATURE_LEVEL,
+};
+
+const D2D1_HWND_RENDER_TARGET_PROPERTIES = extern struct {
+    hwnd: HWND,
+    pixelSize: D2D1_SIZE_U,
+    presentOptions: D2D1_PRESENT_OPTIONS,
+};
+
+const D2D1_BITMAP_PROPERTIES = extern struct {
+    pixelFormat: D2D1_PIXEL_FORMAT,
+    dpiX: FLOAT,
+    dpiY: FLOAT,
+};
+
+const WICRect = extern struct {
+    X: INT,
+    Y: INT,
+    Width: INT,
+    Height: INT,
+};
+
+const D2D1_BITMAP_BRUSH_PROPERTIES = extern struct {
+    extendModeX: D2D1_EXTEND_MODE,
+    extendModeY: D2D1_EXTEND_MODE,
+    interpolationMode: D2D1_BITMAP_INTERPOLATION_MODE,
+};
+
+const D2D1_BRUSH_PROPERTIES = extern struct {
+    opacity: FLOAT,
+    transform: D2D1_MATRIX_3X2_F,
+};
+
+const D2D1_COLOR_F = extern struct {
+    r: FLOAT,
+    g: FLOAT,
+    b: FLOAT,
+    a: FLOAT,
 };
 
 const D2D1_FACTORY_TYPE = enum(c_int) {
@@ -216,7 +291,7 @@ const DWRITE_PIXEL_GEOMETRY = enum(c_int) {
     DWRITE_PIXEL_GEOMETRY_BGR,
 };
 
-pub const DWRITE_RENDERING_MODE = enum(c_int) {
+const DWRITE_RENDERING_MODE = enum(c_int) {
     DWRITE_RENDERING_MODE_DDEFAULT,
     DWRITE_RENDERING_MODE_ALIASED,
     DWRITE_RENDERING_MODE_GDI_CLASSIC,
@@ -230,9 +305,201 @@ pub const DWRITE_RENDERING_MODE = enum(c_int) {
     DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC,
 };
 
+const WICBitmapPaletteType = enum(c_int) {
+    WICBitmapPaletteTypeCustom = 0,
+    WICBitmapPaletteTypeMedianCut = 0x1,
+    WICBitmapPaletteTypeFixedBW = 0x2,
+    WICBitmapPaletteTypeFixedHalftone8 = 0x3,
+    WICBitmapPaletteTypeFixedHalftone27 = 0x4,
+    WICBitmapPaletteTypeFixedHalftone64 = 0x5,
+    WICBitmapPaletteTypeFixedHalftone125 = 0x6,
+    WICBitmapPaletteTypeFixedHalftone216 = 0x7,
+    WICBitmapPaletteTypeFixedWebPalette,
+    WICBitmapPaletteTypeFixedHalftone252 = 0x8,
+    WICBitmapPaletteTypeFixedHalftone256 = 0x9,
+    WICBitmapPaletteTypeFixedGray4 = 0xa,
+    WICBitmapPaletteTypeFixedGray16 = 0xb,
+    WICBitmapPaletteTypeFixedGray256 = 0xc,
+    WICBITMAPPALETTETYPE_FORCE_DWORD = 0x7fffffff,
+};
+
+const DXGI_FORMAT = enum(c_int) {
+    DXGI_FORMAT_UNKNOWN = 0,
+    DXGI_FORMAT_R32G32B32A32_TYPELESS = 1,
+    DXGI_FORMAT_R32G32B32A32_FLOAT = 2,
+    DXGI_FORMAT_R32G32B32A32_UINT = 3,
+    DXGI_FORMAT_R32G32B32A32_SINT = 4,
+    DXGI_FORMAT_R32G32B32_TYPELESS = 5,
+    DXGI_FORMAT_R32G32B32_FLOAT = 6,
+    DXGI_FORMAT_R32G32B32_UINT = 7,
+    DXGI_FORMAT_R32G32B32_SINT = 8,
+    DXGI_FORMAT_R16G16B16A16_TYPELESS = 9,
+    DXGI_FORMAT_R16G16B16A16_FLOAT = 10,
+    DXGI_FORMAT_R16G16B16A16_UNORM = 11,
+    DXGI_FORMAT_R16G16B16A16_UINT = 12,
+    DXGI_FORMAT_R16G16B16A16_SNORM = 13,
+    DXGI_FORMAT_R16G16B16A16_SINT = 14,
+    DXGI_FORMAT_R32G32_TYPELESS = 15,
+    DXGI_FORMAT_R32G32_FLOAT = 16,
+    DXGI_FORMAT_R32G32_UINT = 17,
+    DXGI_FORMAT_R32G32_SINT = 18,
+    DXGI_FORMAT_R32G8X24_TYPELESS = 19,
+    DXGI_FORMAT_D32_FLOAT_S8X24_UINT = 20,
+    DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS = 21,
+    DXGI_FORMAT_X32_TYPELESS_G8X24_UINT = 22,
+    DXGI_FORMAT_R10G10B10A2_TYPELESS = 23,
+    DXGI_FORMAT_R10G10B10A2_UNORM = 24,
+    DXGI_FORMAT_R10G10B10A2_UINT = 25,
+    DXGI_FORMAT_R11G11B10_FLOAT = 26,
+    DXGI_FORMAT_R8G8B8A8_TYPELESS = 27,
+    DXGI_FORMAT_R8G8B8A8_UNORM = 28,
+    DXGI_FORMAT_R8G8B8A8_UNORM_SRGB = 29,
+    DXGI_FORMAT_R8G8B8A8_UINT = 30,
+    DXGI_FORMAT_R8G8B8A8_SNORM = 31,
+    DXGI_FORMAT_R8G8B8A8_SINT = 32,
+    DXGI_FORMAT_R16G16_TYPELESS = 33,
+    DXGI_FORMAT_R16G16_FLOAT = 34,
+    DXGI_FORMAT_R16G16_UNORM = 35,
+    DXGI_FORMAT_R16G16_UINT = 36,
+    DXGI_FORMAT_R16G16_SNORM = 37,
+    DXGI_FORMAT_R16G16_SINT = 38,
+    DXGI_FORMAT_R32_TYPELESS = 39,
+    DXGI_FORMAT_D32_FLOAT = 40,
+    DXGI_FORMAT_R32_FLOAT = 41,
+    DXGI_FORMAT_R32_UINT = 42,
+    DXGI_FORMAT_R32_SINT = 43,
+    DXGI_FORMAT_R24G8_TYPELESS = 44,
+    DXGI_FORMAT_D24_UNORM_S8_UINT = 45,
+    DXGI_FORMAT_R24_UNORM_X8_TYPELESS = 46,
+    DXGI_FORMAT_X24_TYPELESS_G8_UINT = 47,
+    DXGI_FORMAT_R8G8_TYPELESS = 48,
+    DXGI_FORMAT_R8G8_UNORM = 49,
+    DXGI_FORMAT_R8G8_UINT = 50,
+    DXGI_FORMAT_R8G8_SNORM = 51,
+    DXGI_FORMAT_R8G8_SINT = 52,
+    DXGI_FORMAT_R16_TYPELESS = 53,
+    DXGI_FORMAT_R16_FLOAT = 54,
+    DXGI_FORMAT_D16_UNORM = 55,
+    DXGI_FORMAT_R16_UNORM = 56,
+    DXGI_FORMAT_R16_UINT = 57,
+    DXGI_FORMAT_R16_SNORM = 58,
+    DXGI_FORMAT_R16_SINT = 59,
+    DXGI_FORMAT_R8_TYPELESS = 60,
+    DXGI_FORMAT_R8_UNORM = 61,
+    DXGI_FORMAT_R8_UINT = 62,
+    DXGI_FORMAT_R8_SNORM = 63,
+    DXGI_FORMAT_R8_SINT = 64,
+    DXGI_FORMAT_A8_UNORM = 65,
+    DXGI_FORMAT_R1_UNORM = 66,
+    DXGI_FORMAT_R9G9B9E5_SHAREDEXP = 67,
+    DXGI_FORMAT_R8G8_B8G8_UNORM = 68,
+    DXGI_FORMAT_G8R8_G8B8_UNORM = 69,
+    DXGI_FORMAT_BC1_TYPELESS = 70,
+    DXGI_FORMAT_BC1_UNORM = 71,
+    DXGI_FORMAT_BC1_UNORM_SRGB = 72,
+    DXGI_FORMAT_BC2_TYPELESS = 73,
+    DXGI_FORMAT_BC2_UNORM = 74,
+    DXGI_FORMAT_BC2_UNORM_SRGB = 75,
+    DXGI_FORMAT_BC3_TYPELESS = 76,
+    DXGI_FORMAT_BC3_UNORM = 77,
+    DXGI_FORMAT_BC3_UNORM_SRGB = 78,
+    DXGI_FORMAT_BC4_TYPELESS = 79,
+    DXGI_FORMAT_BC4_UNORM = 80,
+    DXGI_FORMAT_BC4_SNORM = 81,
+    DXGI_FORMAT_BC5_TYPELESS = 82,
+    DXGI_FORMAT_BC5_UNORM = 83,
+    DXGI_FORMAT_BC5_SNORM = 84,
+    DXGI_FORMAT_B5G6R5_UNORM = 85,
+    DXGI_FORMAT_B5G5R5A1_UNORM = 86,
+    DXGI_FORMAT_B8G8R8A8_UNORM = 87,
+    DXGI_FORMAT_B8G8R8X8_UNORM = 88,
+    DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM = 89,
+    DXGI_FORMAT_B8G8R8A8_TYPELESS = 90,
+    DXGI_FORMAT_B8G8R8A8_UNORM_SRGB = 91,
+    DXGI_FORMAT_B8G8R8X8_TYPELESS = 92,
+    DXGI_FORMAT_B8G8R8X8_UNORM_SRGB = 93,
+    DXGI_FORMAT_BC6H_TYPELESS = 94,
+    DXGI_FORMAT_BC6H_UF16 = 95,
+    DXGI_FORMAT_BC6H_SF16 = 96,
+    DXGI_FORMAT_BC7_TYPELESS = 97,
+    DXGI_FORMAT_BC7_UNORM = 98,
+    DXGI_FORMAT_BC7_UNORM_SRGB = 99,
+    DXGI_FORMAT_AYUV = 100,
+    DXGI_FORMAT_Y410 = 101,
+    DXGI_FORMAT_Y416 = 102,
+    DXGI_FORMAT_NV12 = 103,
+    DXGI_FORMAT_P010 = 104,
+    DXGI_FORMAT_P016 = 105,
+    DXGI_FORMAT_420_OPAQUE = 106,
+    DXGI_FORMAT_YUY2 = 107,
+    DXGI_FORMAT_Y210 = 108,
+    DXGI_FORMAT_Y216 = 109,
+    DXGI_FORMAT_NV11 = 110,
+    DXGI_FORMAT_AI44 = 111,
+    DXGI_FORMAT_IA44 = 112,
+    DXGI_FORMAT_P8 = 113,
+    DXGI_FORMAT_A8P8 = 114,
+    DXGI_FORMAT_B4G4R4A4_UNORM = 115,
+    DXGI_FORMAT_P208 = 130,
+    DXGI_FORMAT_V208 = 131,
+    DXGI_FORMAT_V408 = 132,
+    DXGI_FORMAT_SAMPLER_FEEDBACK_MIN_MIP_OPAQUE = 189,
+    DXGI_FORMAT_SAMPLER_FEEDBACK_MIP_REGION_USED_OPAQUE = 190,
+    DXGI_FORMAT_FORCE_UINT = 0xffffffff,
+};
+
+const D2D1_ALPHA_MODE = enum(c_int) {
+    D2D1_ALPHA_MODE_UNKNOWN = 0,
+    D2D1_ALPHA_MODE_PREMULTIPLIED = 1,
+    D2D1_ALPHA_MODE_STRAIGHT = 2,
+    D2D1_ALPHA_MODE_IGNORE = 3,
+    D2D1_ALPHA_MODE_FORCE_DWORD = 0xffffffff,
+};
+
+const D2D1_RENDER_TARGET_TYPE = enum(c_int) {
+    D2D1_RENDER_TARGET_TYPE_DEFAULT = 0,
+    D2D1_RENDER_TARGET_TYPE_SOFTWARE = 1,
+    D2D1_RENDER_TARGET_TYPE_HARDWARE = 2,
+    D2D1_RENDER_TARGET_TYPE_FORCE_DWORD = 0xffffffff,
+};
+
+const D2D1_RENDER_TARGET_USAGE = enum(c_int) {
+    D2D1_RENDER_TARGET_USAGE_NONE = 0x00000000,
+    D2D1_RENDER_TARGET_USAGE_FORCE_BITMAP_REMOTING = 0x00000001,
+    D2D1_RENDER_TARGET_USAGE_GDI_COMPATIBLE = 0x00000002,
+    D2D1_RENDER_TARGET_USAGE_FORCE_DWORD = 0xffffffff,
+};
+
+const D2D1_FEATURE_LEVEL = enum(c_int) {
+    D2D1_FEATURE_LEVEL_DEFAULT = 0,
+    D2D1_FEATURE_LEVEL_9,
+    D2D1_FEATURE_LEVEL_10,
+    D2D1_FEATURE_LEVEL_FORCE_DWORD = 0xffffffff,
+};
+
+const D2D1_PRESENT_OPTIONS = enum(c_int) {
+    D2D1_PRESENT_OPTIONS_NONE = 0x00000000,
+    D2D1_PRESENT_OPTIONS_RETAIN_CONTENTS = 0x00000001,
+    D2D1_PRESENT_OPTIONS_IMMEDIATELY = 0x00000002,
+    D2D1_PRESENT_OPTIONS_FORCE_DWORD = 0xffffffff,
+};
+
+const D2D1_EXTEND_MODE = enum(c_int) {
+    D2D1_EXTEND_MODE_CLAMP = 0,
+    D2D1_EXTEND_MODE_WRAP = 1,
+    D2D1_EXTEND_MODE_MIRROR = 2,
+    D2D1_EXTEND_MODE_FORCE_DWORD = 0xffffffff,
+};
+
+const D2D1_BITMAP_INTERPOLATION_MODE = enum(c_int) {
+    D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR,
+    D2D1_BITMAP_INTERPOLATION_MODE_LINEAR,
+    D2D1_BITMAP_INTERPOLATION_MODE_FORCE_DWORD = 0xffffffff,
+};
+
 extern "d2d1" fn D2D1CreateFactory(
     factoryType: D2D1_FACTORY_TYPE,
-    riid: *const GUID,
+    riid: REFIID,
     pFactoryOptions: ?*const D2D1_FACTORY_OPTIONS,
     ppIFactory: *?*ID2D1Factory,
 ) callconv(.winapi) HRESULT;
@@ -243,7 +510,7 @@ const ID2D1Factory = extern struct {
     const VTable = extern struct {
         QueryInterface: *const fn (
             *ID2D1Factory,
-            *const GUID,
+            REFIID,
             *?*anyopaque,
         ) callconv(.winapi) HRESULT,
         AddRef: *const fn (*ID2D1Factory) callconv(.winapi) ULONG,
@@ -308,7 +575,7 @@ const ID2D1Resource = extern struct {
     const VTable = extern struct {
         QueryInterface: *const fn (
             *ID2D1Resource,
-            *const GUID,
+            REFIID,
             *?*anyopaque,
         ) callconv(.winapi) HRESULT,
         AddRef: *const fn (*ID2D1Resource) callconv(.winapi) ULONG,
@@ -326,13 +593,211 @@ const ID2D1Resource = extern struct {
     }
 };
 
+const ID2D1Brush = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *ID2D1Brush,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*ID2D1Brush) callconv(.winapi) ULONG,
+        Release: *const fn (*ID2D1Brush) callconv(.winapi) ULONG,
+
+        GetFactory: *const fn (*ID2D1Brush, **ID2D1Factory) callconv(.winapi) void,
+
+        SetOpacity: *const fn (*ID2D1Brush, FLOAT) callconv(.winapi) void,
+        SetTransform: *const fn (*ID2D1Brush, *const D2D1_MATRIX_3X2_F) callconv(.winapi) void,
+        GetOpacity: *const fn (*ID2D1Brush) callconv(.winapi) FLOAT,
+        GetTransform: *const fn (*ID2D1Brush, *D2D1_MATRIX_3X2_F) callconv(.winapi) void,
+    };
+
+    pub fn Release(self: *ID2D1Brush) ULONG {
+        return self.v.Release(self);
+    }
+};
+
+const ID2D1BitmapBrush = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *ID2D1BitmapBrush,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*ID2D1BitmapBrush) callconv(.winapi) ULONG,
+        Release: *const fn (*ID2D1BitmapBrush) callconv(.winapi) ULONG,
+
+        GetFactory: *const fn (*ID2D1BitmapBrush, **ID2D1Factory) callconv(.winapi) void,
+
+        SetOpacity: *const fn (*ID2D1BitmapBrush, FLOAT) callconv(.winapi) void,
+        SetTransform: *const fn (
+            *ID2D1BitmapBrush,
+            *const D2D1_MATRIX_3X2_F,
+        ) callconv(.winapi) void,
+        GetOpacity: *const fn (*ID2D1BitmapBrush) callconv(.winapi) FLOAT,
+        GetTransform: *const fn (*ID2D1BitmapBrush, *D2D1_MATRIX_3X2_F) callconv(.winapi) void,
+
+        SetExtendModeX: *const fn (*ID2D1BitmapBrush, D2D1_EXTEND_MODE) callconv(.winapi) void,
+        SetExtendModeY: *const fn (*ID2D1BitmapBrush, D2D1_EXTEND_MODE) callconv(.winapi) void,
+        SetInterpolationMode: *const fn (
+            *ID2D1BitmapBrush,
+            D2D1_BITMAP_INTERPOLATION_MODE,
+        ) callconv(.winapi) void,
+        SetBitmap: *const fn (*ID2D1BitmapBrush, ?*ID2D1Bitmap) callconv(.winapi) void,
+        GetExtendModeX: *const fn (*ID2D1BitmapBrush) callconv(.winapi) D2D1_EXTEND_MODE,
+        GetExtendModeY: *const fn (*ID2D1BitmapBrush) callconv(.winapi) D2D1_EXTEND_MODE,
+        GetInterpolationMode: *const fn (
+            *ID2D1BitmapBrush,
+        ) callconv(.winapi) D2D1_BITMAP_INTERPOLATION_MODE,
+        GetBitmap: *const fn (*ID2D1BitmapBrush, *?*ID2D1Bitmap) callconv(.winapi) void,
+    };
+
+    pub fn Release(self: *ID2D1BitmapBrush) ULONG {
+        return self.v.Release(self);
+    }
+};
+
+const ID2D1SolidColorBrush = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *ID2D1SolidColorBrush,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*ID2D1SolidColorBrush) callconv(.winapi) ULONG,
+        Release: *const fn (*ID2D1SolidColorBrush) callconv(.winapi) ULONG,
+
+        GetFactory: *const fn (*ID2D1SolidColorBrush, **ID2D1Factory) callconv(.winapi) void,
+
+        SetOpacity: *const fn (*ID2D1SolidColorBrush, FLOAT) callconv(.winapi) void,
+        SetTransform: *const fn (*ID2D1SolidColorBrush, *const D2D1_MATRIX_3X2_F) callconv(.winapi) void,
+        GetOpacity: *const fn (*ID2D1SolidColorBrush) callconv(.winapi) FLOAT,
+        GetTransform: *const fn (*ID2D1SolidColorBrush, *D2D1_MATRIX_3X2_F) callconv(.winapi) void,
+
+        SetColor: *const fn (*ID2D1SolidColorBrush, *const D2D1_COLOR_F) callconv(.winapi) void,
+        GetColor: *const fn (*ID2D1SolidColorBrush) callconv(.winapi) D2D1_COLOR_F,
+    };
+
+    pub fn Release(self: *ID2D1SolidColorBrush) ULONG {
+        return self.v.Release(self);
+    }
+};
+
+const ID2D1RenderTarget = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *ID2D1RenderTarget,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*ID2D1RenderTarget) callconv(.winapi) ULONG,
+        Release: *const fn (*ID2D1RenderTarget) callconv(.winapi) ULONG,
+
+        GetFactory: *const fn (
+            *ID2D1RenderTarget,
+            **ID2D1Factory,
+        ) callconv(.winapi) void,
+
+        CreateBitmap: *const fn (
+            *ID2D1RenderTarget,
+            ?*const anyopaque,
+            UINT32,
+            *const D2D1_BITMAP_PROPERTIES,
+            **ID2D1Bitmap,
+        ) callconv(.winapi) HRESULT,
+        CreateBitmapFromWicBitmap: *const fn (
+            *ID2D1RenderTarget,
+            *IWICBitmapSource,
+            ?*const D2D1_BITMAP_PROPERTIES,
+            **ID2D1Bitmap,
+        ) callconv(.winapi) HRESULT,
+        CreateSharedBitmap: *const fn (
+            *ID2D1RenderTarget,
+            REFIID,
+            *anyopaque,
+            ?*const D2D1_BITMAP_PROPERTIES,
+            **ID2D1Bitmap,
+        ) callconv(.winapi) HRESULT,
+        CreateBitmapBrush: *const fn (
+            *ID2D1RenderTarget,
+            ?*ID2D1Bitmap,
+            ?*const D2D1_BITMAP_BRUSH_PROPERTIES,
+            ?*const D2D1_BRUSH_PROPERTIES,
+            **ID2D1BitmapBrush,
+        ) callconv(.winapi) HRESULT,
+        CreateSolidColorBrush: *const fn (
+            *ID2D1RenderTarget,
+            *const D2D1_COLOR_F,
+            ?*const D2D1_BRUSH_PROPERTIES,
+            **ID2D1SolidColorBrush,
+        ) callconv(.winapi) HRESULT,
+    };
+
+    pub fn Release(self: *ID2D1Resource) ULONG {
+        return self.v.Release(self);
+    }
+};
+
+const ID2D1Bitmap = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *ID2D1Bitmap,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*ID2D1Bitmap) callconv(.winapi) ULONG,
+        Release: *const fn (*ID2D1Bitmap) callconv(.winapi) ULONG,
+
+        GetFactory: *const fn (
+            *ID2D1Bitmap,
+            **ID2D1Factory,
+        ) callconv(.winapi) void,
+
+        GetSize: *const fn (*ID2D1Bitmap) callconv(.winapi) D2D1_SIZE_F,
+        GetPixelSize: *const fn (*ID2D1Bitmap) callconv(.winapi) D2D1_SIZE_U,
+        GetPixelFormat: *const fn (*ID2D1Bitmap) callconv(.winapi) D2D1_PIXEL_FORMAT,
+        GetDpi: *const fn (
+            *ID2D1Bitmap,
+            *FLOAT,
+            *FLOAT,
+        ) callconv(.winapi) void,
+        CopyFromBitmap: *const fn (
+            *ID2D1Bitmap,
+            ?*const D2D1_POINT_2U,
+            *ID2D1Bitmap,
+            ?*const D2D1_RECT_U,
+        ) callconv(.winapi) HRESULT,
+        CopyFromRenderTarget: *const fn (
+            *ID2D1Bitmap,
+            ?*const D2D1_POINT_2U,
+            *ID2D1RenderTarget,
+            ?*const D2D1_RECT_U,
+        ) callconv(.winapi) HRESULT,
+        CopyFromMemory: *const fn (
+            *ID2D1Bitmap,
+            ?*const D2D1_RECT_U,
+            *const anyopaque,
+            UINT32,
+        ) callconv(.winapi) HRESULT,
+    };
+};
+
 const ID2D1DrawingStateBlock = extern struct {
     v: *const VTable,
 
     const VTable = extern struct {
         QueryInterface: *const fn (
             *ID2D1DrawingStateBlock,
-            *const GUID,
+            REFIID,
             *?*anyopaque,
         ) callconv(.winapi) HRESULT,
         AddRef: *const fn (*ID2D1DrawingStateBlock) callconv(.winapi) ULONG,
@@ -373,7 +838,7 @@ const ID2D1StrokeStyle = extern struct {
     const VTable = extern struct {
         QueryInterface: *const fn (
             *ID2D1StrokeStyle,
-            *const GUID,
+            REFIID,
             *?*anyopaque,
         ) callconv(.winapi) HRESULT,
         AddRef: *const fn (*ID2D1StrokeStyle) callconv(.winapi) ULONG,
@@ -403,7 +868,7 @@ const ID2D1Geometry = extern struct {
     const VTable = extern struct {
         QueryInterface: *const fn (
             *ID2D1Geometry,
-            *const GUID,
+            REFIID,
             *?*anyopaque,
         ) callconv(.winapi) HRESULT,
         AddRef: *const fn (*ID2D1Geometry) callconv(.winapi) ULONG,
@@ -511,7 +976,7 @@ const ID2D1SimplifiedGeometrySink = extern struct {
     const VTable = extern struct {
         QueryInterface: *const fn (
             *ID2D1SimplifiedGeometrySink,
-            *const GUID,
+            REFIID,
             *?*anyopaque,
         ) callconv(.winapi) HRESULT,
         AddRef: *const fn (*ID2D1SimplifiedGeometrySink) callconv(.winapi) ULONG,
@@ -554,7 +1019,7 @@ const ID2D1GeometrySink = extern struct {
     const VTable = extern struct {
         QueryInterface: *const fn (
             *ID2D1GeometrySink,
-            *const GUID,
+            REFIID,
             *?*anyopaque,
         ) callconv(.winapi) HRESULT,
         AddRef: *const fn (*ID2D1GeometrySink) callconv(.winapi) ULONG,
@@ -614,7 +1079,7 @@ const ID2D1TesselationSink = extern struct {
     const VTable = extern struct {
         QueryInterface: *const fn (
             *ID2D1TesselationSink,
-            *const GUID,
+            REFIID,
             *?*anyopaque,
         ) callconv(.winapi) HRESULT,
         AddRef: *const fn (*ID2D1TesselationSink) callconv(.winapi) ULONG,
@@ -635,7 +1100,7 @@ const ID2D1RectangleGeometry = extern struct {
     const VTable = extern struct {
         QueryInterface: *const fn (
             *ID2D1RectangleGeometry,
-            *const GUID,
+            REFIID,
             *?*anyopaque,
         ) callconv(.winapi) HRESULT,
         AddRef: *const fn (*ID2D1RectangleGeometry) callconv(.winapi) ULONG,
@@ -734,6 +1199,7 @@ const ID2D1RectangleGeometry = extern struct {
             FLOAT,
             *ID2D1SimplifiedGeometrySink,
         ) callconv(.winapi) HRESULT,
+
         GetRect: *const fn (*ID2D1RectangleGeometry, *D2D1_RECT_F) callconv(.winapi) void,
     };
 };
@@ -744,7 +1210,7 @@ const ID2D1RoundedRectangleGeometry = extern struct {
     const VTable = extern struct {
         QueryInterface: *const fn (
             *ID2D1RoundedRectangleGeometry,
-            *const GUID,
+            REFIID,
             *?*anyopaque,
         ) callconv(.winapi) HRESULT,
         AddRef: *const fn (*ID2D1RoundedRectangleGeometry) callconv(.winapi) ULONG,
@@ -846,6 +1312,7 @@ const ID2D1RoundedRectangleGeometry = extern struct {
             FLOAT,
             *ID2D1SimplifiedGeometrySink,
         ) callconv(.winapi) HRESULT,
+
         GetRoundedRect: *const fn (
             *ID2D1RoundedRectangleGeometry,
             *D2D1_ROUNDED_RECT,
@@ -859,7 +1326,7 @@ const ID2D1EllipseGeometry = extern struct {
     const VTable = extern struct {
         QueryInterface: *const fn (
             *ID2D1EllipseGeometry,
-            *const GUID,
+            REFIID,
             *?*anyopaque,
         ) callconv(.winapi) HRESULT,
         AddRef: *const fn (*ID2D1EllipseGeometry) callconv(.winapi) ULONG,
@@ -961,6 +1428,7 @@ const ID2D1EllipseGeometry = extern struct {
             FLOAT,
             *ID2D1SimplifiedGeometrySink,
         ) callconv(.winapi) HRESULT,
+
         GetEllipse: *const fn (
             *ID2D1EllipseGeometry,
             *D2D1_ELLIPSE,
@@ -974,7 +1442,7 @@ const ID2D1GeometryGroup = extern struct {
     const VTable = extern struct {
         QueryInterface: *const fn (
             *ID2D1GeometryGroup,
-            *const GUID,
+            REFIID,
             *?*anyopaque,
         ) callconv(.winapi) HRESULT,
         AddRef: *const fn (*ID2D1GeometryGroup) callconv(.winapi) ULONG,
@@ -1076,6 +1544,7 @@ const ID2D1GeometryGroup = extern struct {
             FLOAT,
             *ID2D1SimplifiedGeometrySink,
         ) callconv(.winapi) HRESULT,
+
         GetFillMode: *const fn (*ID2D1GeometryGroup) callconv(.winapi) D2D1_FILL_MODE,
         GetSourceGeometryCount: *const fn (*ID2D1GeometryGroup) callconv(.winapi) UINT32,
         GetSourceGeometries: *const fn (
@@ -1092,7 +1561,7 @@ const ID2D1TransformedGeometry = extern struct {
     const VTable = extern struct {
         QueryInterface: *const fn (
             *ID2D1TransformedGeometry,
-            *const GUID,
+            REFIID,
             *?*anyopaque,
         ) callconv(.winapi) HRESULT,
         AddRef: *const fn (*ID2D1TransformedGeometry) callconv(.winapi) ULONG,
@@ -1194,6 +1663,7 @@ const ID2D1TransformedGeometry = extern struct {
             FLOAT,
             *ID2D1SimplifiedGeometrySink,
         ) callconv(.winapi) HRESULT,
+
         GetSourceGeometry: *const fn (
             *ID2D1TransformedGeometry,
             **ID2D1Geometry,
@@ -1211,7 +1681,7 @@ const ID2D1PathGeometry = extern struct {
     const VTable = extern struct {
         QueryInterface: *const fn (
             *ID2D1PathGeometry,
-            *const GUID,
+            REFIID,
             *?*anyopaque,
         ) callconv(.winapi) HRESULT,
         AddRef: *const fn (*ID2D1PathGeometry) callconv(.winapi) ULONG,
@@ -1313,6 +1783,7 @@ const ID2D1PathGeometry = extern struct {
             FLOAT,
             *ID2D1SimplifiedGeometrySink,
         ) callconv(.winapi) HRESULT,
+
         Open: *const fn (
             *ID2D1PathGeometry,
             **ID2D1GeometrySink,
@@ -1338,7 +1809,7 @@ const IDWriteRenderingParams = extern struct {
     const VTable = extern struct {
         QueryInterface: *const fn (
             *IDWriteRenderingParams,
-            *const GUID,
+            REFIID,
             *?*anyopaque,
         ) callconv(.winapi) HRESULT,
         AddRef: *const fn (*IDWriteRenderingParams) callconv(.winapi) ULONG,
@@ -1358,4 +1829,158 @@ const IDWriteRenderingParams = extern struct {
     pub fn Release(self: *IDWriteRenderingParams) ULONG {
         return self.v.Release(self);
     }
+};
+
+const IWICBitmap = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IWICBitmap,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IWICBitmap) callconv(.winapi) ULONG,
+        Release: *const fn (*IWICBitmap) callconv(.winapi) ULONG,
+
+        GetSize: *const fn (*IWICBitmap, *UINT, *UINT) callconv(.winapi) HRESULT,
+        GetPixelFormat: *const fn (*IWICBitmap, *GUID) callconv(.winapi) HRESULT,
+        GetResolution: *const fn (*IWICBitmap, *double, *double) callconv(.winapi) HRESULT,
+        CopyPalette: *const fn (*IWICBitmap, ?*IWICPalette) callconv(.winapi) HRESULT,
+        CopyPixels: *const fn (
+            *IWICBitmap,
+            ?*const WICRect,
+            UINT,
+            UINT,
+            [*]BYTE,
+        ) callconv(.winapi) HRESULT,
+
+        Lock: *const fn (
+            *IWICBitmap,
+            ?*const WICRect,
+            DWORD,
+            *?*IWICBitmapLock,
+        ) callconv(.winapi) HRESULT,
+        SetPalette: *const fn (
+            *IWICBitmap,
+            ?*IWICPalette,
+        ) callconv(.winapi) HRESULT,
+        SetResolution: *const fn (
+            *IWICBitmap,
+            double,
+            double,
+        ) callconv(.winapi) HRESULT,
+    };
+};
+
+const IWICBitmapSource = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IWICBitmapSource,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IWICBitmapSource) callconv(.winapi) ULONG,
+        Release: *const fn (*IWICBitmapSource) callconv(.winapi) ULONG,
+
+        GetSize: *const fn (*IWICBitmapSource, *UINT, *UINT) callconv(.winapi) HRESULT,
+        GetPixelFormat: *const fn (
+            *IWICBitmapSource,
+            *WICPixelFormatGUID,
+        ) callconv(.winapi) HRESULT,
+        GetResolution: *const fn (
+            *IWICBitmapSource,
+            *double,
+            *double,
+        ) callconv(.winapi) HRESULT,
+        CopyPalette: *const fn (*IWICBitmapSource, ?*IWICPalette) callconv(.winapi) HRESULT,
+        CopyPixels: *const fn (
+            *IWICBitmapSource,
+            ?*const WICRect,
+            UINT,
+            UINT,
+            [*]BYTE,
+        ) callconv(.winapi) HRESULT,
+    };
+};
+
+const IWICBitmapLock = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IWICBitmapLock,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IWICBitmapLock) callconv(.winapi) ULONG,
+        Release: *const fn (*IWICBitmapLock) callconv(.winapi) ULONG,
+
+        GetSize: *const fn (
+            *IWICBitmapLock,
+            *UINT,
+            *UINT,
+        ) callconv(.winapi) HRESULT,
+        GetStride: *const fn (*IWICBitmapLock, *UINT) callconv(.winapi) HRESULT,
+        GetDataPointer: *const fn (
+            *IWICBitmapLock,
+            *UINT,
+            *?WICInProcPointer,
+        ) callconv(.winapi) HRESULT,
+        GetPixelFormat: *const fn (
+            *IWICBitmapLock,
+            *WICPixelFormatGUID,
+        ) callconv(.winapi) HRESULT,
+    };
+};
+
+const IWICPalette = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IWICPalette,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IWICPalette) callconv(.winapi) ULONG,
+        Release: *const fn (*IWICPalette) callconv(.winapi) ULONG,
+
+        InitializePredefined: *const fn (
+            *IWICPalette,
+            WICBitmapPaletteType,
+            BOOL,
+        ) callconv(.winapi) HRESULT,
+        InitializeCustom: *const fn (
+            *IWICPalette,
+            *WICColor,
+            UINT,
+        ) callconv(.winapi) HRESULT,
+        InitializeFromBitmap: *const fn (
+            *IWICPalette,
+            ?*IWICBitmapSource,
+            UINT,
+            BOOL,
+        ) callconv(.winapi) HRESULT,
+        InitializeFromPalette: *const fn (
+            *IWICPalette,
+            ?*IWICPalette,
+        ) callconv(.winapi) HRESULT,
+        GetType: *const fn (
+            *IWICPalette,
+            *WICBitmapPaletteType,
+        ) callconv(.winapi) HRESULT,
+        GetColorCount: *const fn (*IWICPalette, *UINT) callconv(.winapi) HRESULT,
+        GetColors: *const fn (
+            *IWICPalette,
+            UINT,
+            [*]WICColor,
+            *UINT,
+        ) callconv(.winapi) HRESULT,
+        IsBlackWhite: *const fn (*IWICPalette, *BOOL) callconv(.winapi) HRESULT,
+        IsGrayscale: *const fn (*IWICPalette, *BOOL) callconv(.winapi) HRESULT,
+        HasAlpha: *const fn (*IWICPalette, *BOOL) callconv(.winapi) HRESULT,
+    };
 };
