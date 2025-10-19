@@ -7,6 +7,10 @@ const HRESULT = windows.HRESULT;
 const ULONG = windows.ULONG;
 const BOOL = windows.BOOL;
 const UINT32 = u32;
+const UINT16 = u16;
+const UINT64 = u64;
+const INT16 = i16;
+const INT32 = i32;
 const D2D1_TAG = u64;
 const UINT = windows.UINT;
 const INT = windows.INT;
@@ -18,6 +22,7 @@ const DWORD = windows.DWORD;
 const WICInProcPointer = [*]BYTE;
 const HWND = windows.HWND;
 const REFIID = *const GUID;
+const WCHAR = windows.WCHAR;
 
 const D2D1_RECT_F = extern struct {
     left: FLOAT,
@@ -171,6 +176,66 @@ const D2D1_COLOR_F = extern struct {
     a: FLOAT,
 };
 
+const D2D1_GRADIENT_STOP = extern struct {
+    position: FLOAT,
+    color: D2D1_COLOR_F,
+};
+
+const D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES = extern struct {
+    startPoint: D2D1_POINT_2F,
+    endPoint: D2D1_POINT_2F,
+};
+
+const D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES = extern struct {
+    center: D2D1_POINT_2F,
+    gradientOriginOffset: D2D1_POINT_2F,
+    radiusX: FLOAT,
+    radiusY: FLOAT,
+};
+
+const DWRITE_TRIMMING = extern struct {
+    granularity: DWRITE_TRIMMING_GRANULARITY,
+    delimiter: UINT32,
+    delimiterCount: UINT32,
+};
+
+const DWRITE_MATRIX = extern struct {
+    m11: FLOAT,
+    m12: FLOAT,
+    m21: FLOAT,
+    m22: FLOAT,
+    dx: FLOAT,
+    dy: FLOAT,
+};
+
+const DWRITE_FONT_METRICS = extern struct {
+    designUnitsPerEm: UINT16,
+    ascent: UINT16,
+    descent: UINT16,
+    lineGap: INT16,
+    capHeight: UINT16,
+    xHeight: UINT16,
+    underlinePosition: INT16,
+    underlineThickness: UINT16,
+    strikethroughPosition: INT16,
+    strikethroughThickness: UINT16,
+};
+
+const DWRITE_GLYPH_METRICS = extern struct {
+    leftSideBearing: INT32,
+    advanceWidth: UINT32,
+    rightSideBearing: INT32,
+    topSideBearing: INT32,
+    advanceHeight: UINT32,
+    bottomSideBearing: INT32,
+    verticalOriginY: INT32,
+};
+
+const DWRITE_GLYPH_OFFSET = extern struct {
+    advanceOffset: FLOAT,
+    ascenderOffset: FLOAT,
+};
+
 const D2D1_FACTORY_TYPE = enum(c_int) {
     D2D1_FACTORY_TYPE_SINGLE_THREADED = 0,
     D2D1_FACTORY_TYPE_MULTI_THREADED = 1,
@@ -303,6 +368,99 @@ const DWRITE_RENDERING_MODE = enum(c_int) {
     DWRITE_RENDERING_MODE_CLEARTYPE_GDI_NATURAL,
     DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL,
     DWRITE_RENDERING_MODE_CLEARTYPE_NATURAL_SYMMETRIC,
+};
+
+const DWRITE_MEASURING_MODE = enum(c_int) {
+    DWRITE_MEASURING_MODE_NATURAL,
+    DWRITE_MEASURING_MODE_GDI_CLASSIC,
+    DWRITE_MEASURING_MODE_GDI_NATURAL,
+};
+
+const DWRITE_TEXT_ALIGNMENT = enum(c_int) {
+    DWRITE_TEXT_ALIGNMENT_LEADING,
+    DWRITE_TEXT_ALIGNMENT_TRAILING,
+    DWRITE_TEXT_ALIGNMENT_CENTER,
+    DWRITE_TEXT_ALIGNMENT_JUSTIFIED,
+};
+
+const DWRITE_PARAGRAPH_ALIGNMENT = enum(c_int) {
+    DWRITE_PARAGRAPH_ALIGNMENT_NEAR,
+    DWRITE_PARAGRAPH_ALIGNMENT_FAR,
+    DWRITE_PARAGRAPH_ALIGNMENT_CENTER,
+};
+
+const DWRITE_WORD_WRAPPING = enum(c_int) {
+    DWRITE_WORD_WRAPPING_WRAP = 0,
+    DWRITE_WORD_WRAPPING_NO_WRAP = 1,
+    DWRITE_WORD_WRAPPING_EMERGENCY_BREAK = 2,
+    DWRITE_WORD_WRAPPING_WHOLE_WORD = 3,
+    DWRITE_WORD_WRAPPING_CHARACTER = 4,
+};
+
+const DWRITE_READING_DIRECTION = enum(c_int) {
+    DWRITE_READING_DIRECTION_LEFT_TO_RIGHT = 0,
+    DWRITE_READING_DIRECTION_RIGHT_TO_LEFT = 1,
+    DWRITE_READING_DIRECTION_TOP_TO_BOTTOM = 2,
+    DWRITE_READING_DIRECTION_BOTTOM_TO_TOP = 3,
+};
+
+const DWRITE_FLOW_DIRECTION = enum(c_int) {
+    DWRITE_FLOW_DIRECTION_TOP_TO_BOTTOM = 0,
+    DWRITE_FLOW_DIRECTION_BOTTOM_TO_TOP = 1,
+    DWRITE_FLOW_DIRECTION_LEFT_TO_RIGHT = 2,
+    DWRITE_FLOW_DIRECTION_RIGHT_TO_LEFT = 3,
+};
+
+const DWRITE_TRIMMING_GRANULARITY = enum(c_int) {
+    DWRITE_TRIMMING_GRANULARITY_NONE,
+    DWRITE_TRIMMING_GRANULARITY_CHARACTER,
+    DWRITE_TRIMMING_GRANULARITY_WORD,
+};
+
+const DWRITE_LINE_SPACING_METHOD = enum(c_int) {
+    DWRITE_LINE_SPACING_METHOD_DEFAULT,
+    DWRITE_LINE_SPACING_METHOD_UNIFORM,
+    DWRITE_LINE_SPACING_METHOD_PROPORTIONAL,
+};
+
+const DWRITE_FONT_WEIGHT = enum(c_int) {
+    DWRITE_FONT_WEIGHT_THIN = 100,
+    DWRITE_FONT_WEIGHT_EXTRA_LIGHT = 200,
+    DWRITE_FONT_WEIGHT_ULTRA_LIGHT = 200,
+    DWRITE_FONT_WEIGHT_LIGHT = 300,
+    DWRITE_FONT_WEIGHT_SEMI_LIGHT = 350,
+    DWRITE_FONT_WEIGHT_NORMAL = 400,
+    DWRITE_FONT_WEIGHT_REGULAR = 400,
+    DWRITE_FONT_WEIGHT_MEDIUM = 500,
+    DWRITE_FONT_WEIGHT_DEMI_BOLD = 600,
+    DWRITE_FONT_WEIGHT_SEMI_BOLD = 600,
+    DWRITE_FONT_WEIGHT_BOLD = 700,
+    DWRITE_FONT_WEIGHT_EXTRA_BOLD = 800,
+    DWRITE_FONT_WEIGHT_ULTRA_BOLD = 800,
+    DWRITE_FONT_WEIGHT_BLACK = 900,
+    DWRITE_FONT_WEIGHT_HEAVY = 900,
+    DWRITE_FONT_WEIGHT_EXTRA_BLACK = 950,
+    DWRITE_FONT_WEIGHT_ULTRA_BLACK = 950,
+};
+
+const DWRITE_FONT_STYLE = enum(c_int) {
+    DWRITE_FONT_STYLE_NORMAL,
+    DWRITE_FONT_STYLE_OBLIQUE,
+    DWRITE_FONT_STYLE_ITALIC,
+};
+
+const DWRITE_FONT_STRECTH = enum(c_int) {
+    DWRITE_FONT_STRETCH_UNDEFINED = 0,
+    DWRITE_FONT_STRETCH_ULTRA_CONDENSED = 1,
+    DWRITE_FONT_STRETCH_EXTRA_CONDENSED = 2,
+    DWRITE_FONT_STRETCH_CONDENSED = 3,
+    DWRITE_FONT_STRETCH_SEMI_CONDENSED = 4,
+    DWRITE_FONT_STRETCH_NORMAL = 5,
+    DWRITE_FONT_STRETCH_MEDIUM = 5,
+    DWRITE_FONT_STRETCH_SEMI_EXPANDED = 6,
+    DWRITE_FONT_STRETCH_EXPANDED = 7,
+    DWRITE_FONT_STRETCH_EXTRA_EXPANDED = 8,
+    DWRITE_FONT_STRETCH_ULTRA_EXPANDED = 9,
 };
 
 const WICBitmapPaletteType = enum(c_int) {
@@ -497,6 +655,64 @@ const D2D1_BITMAP_INTERPOLATION_MODE = enum(c_int) {
     D2D1_BITMAP_INTERPOLATION_MODE_FORCE_DWORD = 0xffffffff,
 };
 
+const D2D1_GAMMA = enum(c_int) {
+    D2D1_GAMMA_2_2 = 0,
+    D2D1_GAMMA_1_0 = 1,
+    D2D1_GAMMA_FORCE_DWORD = 0xffffffff,
+};
+
+const D2D1_COMPATIBLE_RENDER_TARGET_OPTIONS = enum(c_int) {
+    D2D1_COMPATIBLE_RENDER_TARGET_OPTIONS_NONE = 0x00000000,
+    D2D1_COMPATIBLE_RENDER_TARGET_OPTIONS_GDI_COMPATIBLE = 0x00000001,
+    D2D1_COMPATIBLE_RENDER_TARGET_OPTIONS_FORCE_DWORD = 0xffffffff,
+};
+
+const D2D1_OPACITY_MASK_CONTENT = enum(c_int) {
+    D2D1_OPACITY_MASK_CONTENT_GRAPHICS = 0,
+    D2D1_OPACITY_MASK_CONTENT_TEXT_NATURAL = 1,
+    D2D1_OPACITY_MASK_CONTENT_TEXT_GDI_COMPATIBLE = 2,
+    D2D1_OPACITY_MASK_CONTENT_FORCE_DWORD = 0xffffffff,
+};
+
+const D2D1_DRAW_TEXT_OPTIONS = enum(c_int) {
+    D2D1_DRAW_TEXT_OPTIONS_NO_SNAP = 0x00000001,
+    D2D1_DRAW_TEXT_OPTIONS_CLIP = 0x00000002,
+    D2D1_DRAW_TEXT_OPTIONS_ENABLE_COLOR_FONT = 0x00000004,
+    D2D1_DRAW_TEXT_OPTIONS_DISABLE_COLOR_BITMAP_SNAPPING = 0x00000008,
+    D2D1_DRAW_TEXT_OPTIONS_NONE = 0x00000000,
+    D2D1_DRAW_TEXT_OPTIONS_FORCE_DWORD = 0xffffffff,
+};
+
+const DWRITE_FONT_FACE_TYPE = enum(c_int) {
+    DWRITE_FONT_FACE_TYPE_CFF,
+    DWRITE_FONT_FACE_TYPE_TRUETYPE,
+    DWRITE_FONT_FACE_TYPE_OPENTYPE_COLLECTION,
+    DWRITE_FONT_FACE_TYPE_TYPE1,
+    DWRITE_FONT_FACE_TYPE_VECTOR,
+    DWRITE_FONT_FACE_TYPE_BITMAP,
+    DWRITE_FONT_FACE_TYPE_UNKNOWN,
+    DWRITE_FONT_FACE_TYPE_RAW_CFF,
+    DWRITE_FONT_FACE_TYPE_TRUETYPE_COLLECTION,
+};
+
+const DWRITE_FONT_SIMULATIONS = enum(c_int) {
+    DWRITE_FONT_SIMULATIONS_NONE = 0x0000,
+    DWRITE_FONT_SIMULATIONS_BOLD = 0x0001,
+    DWRITE_FONT_SIMULATIONS_OBLIQUE = 0x0002,
+};
+
+const DWRITE_FONT_FILE_TYPE = enum(c_int) {
+    DWRITE_FONT_FILE_TYPE_UNKNOWN,
+    DWRITE_FONT_FILE_TYPE_CFF,
+    DWRITE_FONT_FILE_TYPE_TRUETYPE,
+    DWRITE_FONT_FILE_TYPE_OPENTYPE_COLLECTION,
+    DWRITE_FONT_FILE_TYPE_TYPE1_PFM,
+    DWRITE_FONT_FILE_TYPE_TYPE1_PFB,
+    DWRITE_FONT_FILE_TYPE_VECTOR,
+    DWRITE_FONT_FILE_TYPE_BITMAP,
+    DWRITE_FONT_FILE_TYPE_TRUETYPE_COLLECTION,
+};
+
 extern "d2d1" fn D2D1CreateFactory(
     factoryType: D2D1_FACTORY_TYPE,
     riid: REFIID,
@@ -593,6 +809,91 @@ const ID2D1Resource = extern struct {
     }
 };
 
+const ID2D1Layer = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *ID2D1Layer,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*ID2D1Layer) callconv(.winapi) ULONG,
+        Release: *const fn (*ID2D1Layer) callconv(.winapi) ULONG,
+
+        GetFactory: *const fn (*ID2D1Layer, **ID2D1Factory) callconv(.winapi) void,
+
+        GetSize: *const fn (*ID2D1Layer) callconv(.winapi) D2D1_SIZE_F,
+    };
+
+    pub fn Release(self: *ID2D1Layer) ULONG {
+        return self.v.Release(self);
+    }
+
+    pub fn GetFactory(self: *ID2D1Layer, factory: **ID2D1Factory) void {
+        return self.v.GetFactory(self, factory);
+    }
+};
+
+const ID2D1Mesh = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *ID2D1Mesh,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*ID2D1Mesh) callconv(.winapi) ULONG,
+        Release: *const fn (*ID2D1Mesh) callconv(.winapi) ULONG,
+
+        GetFactory: *const fn (*ID2D1Mesh, **ID2D1Factory) callconv(.winapi) void,
+
+        Open: *const fn (*ID2D1Mesh, **ID2D1TesselationSink) callconv(.winapi) HRESULT,
+    };
+
+    pub fn Release(self: *ID2D1Mesh) ULONG {
+        return self.v.Release(self);
+    }
+
+    pub fn GetFactory(self: *ID2D1Mesh, factory: **ID2D1Factory) void {
+        return self.v.GetFactory(self, factory);
+    }
+};
+
+const ID2D1GradientStopCollection = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *ID2D1GradientStopCollection,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*ID2D1GradientStopCollection) callconv(.winapi) ULONG,
+        Release: *const fn (*ID2D1GradientStopCollection) callconv(.winapi) ULONG,
+
+        GetFactory: *const fn (*ID2D1GradientStopCollection, **ID2D1Factory) callconv(.winapi) void,
+
+        GetGradientStopCount: *const fn (*ID2D1GradientStopCollection) callconv(.winapi) UINT32,
+        GetGradientStops: *const fn (
+            *ID2D1GradientStopCollection,
+            [*]D2D1_GRADIENT_STOP,
+            UINT32,
+        ) callconv(.winapi) void,
+        GetColorInterpolationGamma: *const fn (*ID2D1GradientStopCollection) callconv(.winapi) D2D1_GAMMA,
+        GetExtendMode: *const fn (*ID2D1GradientStopCollection) callconv(.winapi) D2D1_EXTEND_MODE,
+    };
+
+    pub fn Release(self: *ID2D1GradientStopCollection) ULONG {
+        return self.v.Release(self);
+    }
+
+    pub fn GetFactory(self: *ID2D1GradientStopCollection, factory: **ID2D1Factory) void {
+        return self.v.GetFactory(self, factory);
+    }
+};
+
 const ID2D1Brush = extern struct {
     v: *const VTable,
 
@@ -614,6 +915,95 @@ const ID2D1Brush = extern struct {
     };
 
     pub fn Release(self: *ID2D1Brush) ULONG {
+        return self.v.Release(self);
+    }
+};
+
+const ID2D1RadialGradientBrush = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *ID2D1RadialGradientBrush,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*ID2D1RadialGradientBrush) callconv(.winapi) ULONG,
+        Release: *const fn (*ID2D1RadialGradientBrush) callconv(.winapi) ULONG,
+
+        GetFactory: *const fn (
+            *ID2D1RadialGradientBrush,
+            **ID2D1Factory,
+        ) callconv(.winapi) void,
+
+        SetOpacity: *const fn (*ID2D1RadialGradientBrush, FLOAT) callconv(.winapi) void,
+        SetTransform: *const fn (
+            *ID2D1RadialGradientBrush,
+            *const D2D1_MATRIX_3X2_F,
+        ) callconv(.winapi) void,
+        GetOpacity: *const fn (*ID2D1RadialGradientBrush) callconv(.winapi) FLOAT,
+        GetTransform: *const fn (
+            *ID2D1RadialGradientBrush,
+            *D2D1_MATRIX_3X2_F,
+        ) callconv(.winapi) void,
+
+        SetCenter: *const fn (*ID2D1RadialGradientBrush, D2D1_POINT_2F) callconv(.winapi) void,
+        SetGradientOriginOffset: *const fn (
+            *ID2D1RadialGradientBrush,
+            D2D1_POINT_2F,
+        ) callconv(.winapi) void,
+        SetRadiusX: *const fn (*ID2D1RadialGradientBrush, FLOAT) callconv(.winapi) void,
+        SetRadiusY: *const fn (*ID2D1RadialGradientBrush, FLOAT) callconv(.winapi) void,
+        GetCenter: *const fn (*ID2D1RadialGradientBrush) callconv(.winapi) D2D1_POINT_2F,
+        GetGradientOriginOffset: *const fn (
+            *ID2D1RadialGradientBrush,
+        ) callconv(.winapi) D2D1_POINT_2F,
+        GetRadiusX: *const fn (*ID2D1RadialGradientBrush) callconv(.winapi) FLOAT,
+        GetRadiusY: *const fn (*ID2D1RadialGradientBrush) callconv(.winapi) FLOAT,
+        GetGradientStopCollection: *const fn (
+            *ID2D1RadialGradientBrush,
+            **ID2D1GradientStopCollection,
+        ) callconv(.winapi) void,
+    };
+
+    pub fn Release(self: *ID2D1RadialGradientBrush) ULONG {
+        return self.v.Release(self);
+    }
+};
+
+const ID2D1LinearGradientBrush = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *ID2D1LinearGradientBrush,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*ID2D1LinearGradientBrush) callconv(.winapi) ULONG,
+        Release: *const fn (*ID2D1LinearGradientBrush) callconv(.winapi) ULONG,
+
+        GetFactory: *const fn (*ID2D1LinearGradientBrush, **ID2D1Factory) callconv(.winapi) void,
+
+        SetOpacity: *const fn (*ID2D1LinearGradientBrush, FLOAT) callconv(.winapi) void,
+        SetTransform: *const fn (
+            *ID2D1LinearGradientBrush,
+            *const D2D1_MATRIX_3X2_F,
+        ) callconv(.winapi) void,
+        GetOpacity: *const fn (*ID2D1LinearGradientBrush) callconv(.winapi) FLOAT,
+        GetTransform: *const fn (
+            *ID2D1LinearGradientBrush,
+            *D2D1_MATRIX_3X2_F,
+        ) callconv(.winapi) void,
+
+        SetStartPoint: *const fn (*ID2D1LinearGradientBrush, D2D1_POINT_2F) callconv(.winapi) void,
+        SetEndPoint: *const fn (*ID2D1LinearGradientBrush, D2D1_POINT_2F) callconv(.winapi) void,
+        GetStartPoint: *const fn (*ID2D1LinearGradientBrush) callconv(.winapi) D2D1_POINT_2F,
+        GetEndPoint: *const fn (*ID2D1LinearGradientBrush) callconv(.winapi) D2D1_POINT_2F,
+        GetGradientStopCollection: *const fn (ID2D1LinearGradientBrush, **ID2D1GradientStopCollection) callconv(.winapi) void,
+    };
+
+    pub fn Release(self: *ID2D1LinearGradientBrush) ULONG {
         return self.v.Release(self);
     }
 };
@@ -738,9 +1128,188 @@ const ID2D1RenderTarget = extern struct {
             ?*const D2D1_BRUSH_PROPERTIES,
             **ID2D1SolidColorBrush,
         ) callconv(.winapi) HRESULT,
+        CreateGradientStopCollection: *const fn (
+            *ID2D1RenderTarget,
+            [*]const D2D1_GRADIENT_STOP,
+            UINT32,
+            D2D1_GAMMA,
+            D2D1_EXTEND_MODE,
+            **ID2D1GradientStopCollection,
+        ) callconv(.winapi) HRESULT,
+        CreateLinearGradientBrush: *const fn (
+            *ID2D1RenderTarget,
+            *const D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES,
+            ?*const D2D1_BRUSH_PROPERTIES,
+            *ID2D1GradientStopCollection,
+            **ID2D1LinearGradientBrush,
+        ) callconv(.winapi) HRESULT,
+        CreateRadialGradientBrush: *const fn (
+            *ID2D1RenderTarget,
+            *const D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES,
+            ?*const D2D1_BRUSH_PROPERTIES,
+            *ID2D1GradientStopCollection,
+            **ID2D1RadialGradientBrush,
+        ) callconv(.winapi) HRESULT,
+        CreateCompatibleRenderTarget: *const fn (
+            *ID2D1RenderTarget,
+            ?*const D2D1_SIZE_F,
+            ?*const D2D1_SIZE_U,
+            ?*const D2D1_PIXEL_FORMAT,
+            D2D1_COMPATIBLE_RENDER_TARGET_OPTIONS,
+            **ID2D1BitmapRenderTarget,
+        ) callconv(.winapi) HRESULT,
+        CreateLayer: *const fn (
+            *ID2D1RenderTarget,
+            ?*const D2D1_SIZE_F,
+            **ID2D1Layer,
+        ) callconv(.winapi) HRESULT,
+        CreateMesh: *const fn (
+            *ID2D1RenderTarget,
+            **ID2D1Mesh,
+        ) callconv(.winapi) HRESULT,
+        DrawLine: *const fn (
+            *ID2D1RenderTarget,
+            D2D1_POINT_2F,
+            D2D1_POINT_2F,
+            *ID2D1Brush,
+            FLOAT,
+            ?*ID2D1StrokeStyle,
+        ) callconv(.winapi) void,
+        DrawRectangle: *const fn (
+            *ID2D1RenderTarget,
+            *const D2D1_RECT_F,
+            *ID2D1Brush,
+            FLOAT,
+            ?*ID2D1StrokeStyle,
+        ) callconv(.winapi) void,
+        FillRectangle: *const fn (
+            *ID2D1RenderTarget,
+            *const D2D1_RECT_F,
+            *ID2D1Brush,
+        ) callconv(.winapi) void,
+        DrawRoundedRectangle: *const fn (
+            *ID2D1RenderTarget,
+            *const D2D1_ROUNDED_RECT,
+            *ID2D1Brush,
+            FLOAT,
+            ?*ID2D1StrokeStyle,
+        ) callconv(.winapi) void,
+        FillRoundedRectangle: *const fn (
+            *ID2D1RenderTarget,
+            *const D2D1_ROUNDED_RECT,
+            *ID2D1Brush,
+        ) callconv(.winapi) void,
+        DrawEllipse: *const fn (
+            *ID2D1RenderTarget,
+            *const D2D1_ELLIPSE,
+            *ID2D1Brush,
+            FLOAT,
+            ?*ID2D1StrokeStyle,
+        ) callconv(.winapi) void,
+        FillEllipse: *const fn (
+            *ID2D1RenderTarget,
+            *const D2D1_ELLIPSE,
+            *ID2D1Brush,
+        ) callconv(.winapi) void,
+        DrawGeometry: *const fn (
+            *ID2D1RenderTarget,
+            *ID2D1Geometry,
+            *ID2D1Brush,
+            FLOAT,
+            ?*ID2D1StrokeStyle,
+        ) callconv(.winapi) void,
+        FillGeometry: *const fn (
+            *ID2D1RenderTarget,
+            *ID2D1Geometry,
+            *ID2D1Brush,
+            ?*ID2D1Brush,
+        ) callconv(.winapi) void,
+        FillMesh: *const fn (
+            *ID2D1RenderTarget,
+            *ID2D1Mesh,
+            *ID2D1Brush,
+        ) callconv(.winapi) void,
+        FillOpacityMask: *const fn (
+            *ID2D1RenderTarget,
+            *ID2D1Bitmap,
+            *ID2D1Brush,
+            D2D1_OPACITY_MASK_CONTENT,
+            ?*const D2D1_RECT_F,
+            ?*const D2D1_RECT_F,
+        ) callconv(.winapi) void,
+        DrawBitmap: *const fn (
+            *ID2D1RenderTarget,
+            *ID2D1Bitmap,
+            ?*const D2D1_RECT_F,
+            FLOAT,
+            D2D1_BITMAP_INTERPOLATION_MODE,
+            ?*const D2D1_RECT_F,
+        ) callconv(.winapi) void,
+        DrawText: *const fn (
+            *ID2D1RenderTarget,
+            [*]const WCHAR,
+            UINT32,
+        ) callconv(.winapi) void,
     };
 
-    pub fn Release(self: *ID2D1Resource) ULONG {
+    pub fn Release(self: *ID2D1RenderTarget) ULONG {
+        return self.v.Release(self);
+    }
+};
+
+const ID2D1BitmapRenderTarget = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *ID2D1BitmapRenderTarget,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*ID2D1BitmapRenderTarget) callconv(.winapi) ULONG,
+        Release: *const fn (*ID2D1BitmapRenderTarget) callconv(.winapi) ULONG,
+
+        GetFactory: *const fn (
+            *ID2D1BitmapRenderTarget,
+            **ID2D1Factory,
+        ) callconv(.winapi) void,
+
+        CreateBitmap: *const fn (
+            *ID2D1BitmapRenderTarget,
+            ?*const anyopaque,
+            UINT32,
+            *const D2D1_BITMAP_PROPERTIES,
+            **ID2D1Bitmap,
+        ) callconv(.winapi) HRESULT,
+        CreateBitmapFromWicBitmap: *const fn (
+            *ID2D1BitmapRenderTarget,
+            *IWICBitmapSource,
+            ?*const D2D1_BITMAP_PROPERTIES,
+            **ID2D1Bitmap,
+        ) callconv(.winapi) HRESULT,
+        CreateSharedBitmap: *const fn (
+            *ID2D1BitmapRenderTarget,
+            REFIID,
+            *anyopaque,
+            ?*const D2D1_BITMAP_PROPERTIES,
+            **ID2D1Bitmap,
+        ) callconv(.winapi) HRESULT,
+        CreateBitmapBrush: *const fn (
+            *ID2D1BitmapRenderTarget,
+            ?*ID2D1Bitmap,
+            ?*const D2D1_BITMAP_BRUSH_PROPERTIES,
+            ?*const D2D1_BRUSH_PROPERTIES,
+            **ID2D1BitmapBrush,
+        ) callconv(.winapi) HRESULT,
+        CreateSolidColorBrush: *const fn (
+            *ID2D1BitmapRenderTarget,
+            *const D2D1_COLOR_F,
+            ?*const D2D1_BRUSH_PROPERTIES,
+            **ID2D1SolidColorBrush,
+        ) callconv(.winapi) HRESULT,
+    };
+
+    pub fn Release(self: *ID2D1BitmapRenderTarget) ULONG {
         return self.v.Release(self);
     }
 };
@@ -1012,6 +1581,8 @@ const ID2D1SimplifiedGeometrySink = extern struct {
         Close: *const fn (*ID2D1SimplifiedGeometrySink) callconv(.winapi) HRESULT,
     };
 };
+
+const IDWriteGeometrySink = ID2D1SimplifiedGeometrySink;
 
 const ID2D1GeometrySink = extern struct {
     v: *const VTable,
@@ -1831,6 +2402,94 @@ const IDWriteRenderingParams = extern struct {
     }
 };
 
+const IDWriteTextFormat = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IDWriteTextFormat,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IDWriteTextFormat) callconv(.winapi) ULONG,
+        Release: *const fn (*IDWriteTextFormat) callconv(.winapi) ULONG,
+
+        SetTextAlignment: *const fn (*IDWriteTextFormat) callconv(.winapi) HRESULT,
+    };
+
+    pub fn Release(self: *IDWriteTextFormat) ULONG {
+        return self.v.Release(self);
+    }
+};
+
+const IDWritePixelSnapping = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IDWritePixelSnapping,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IDWritePixelSnapping) callconv(.winapi) ULONG,
+        Release: *const fn (*IDWritePixelSnapping) callconv(.winapi) ULONG,
+
+        IsPixelSnappingDisabled: *const fn (
+            *IDWritePixelSnapping,
+            ?*anyopaque,
+            *BOOL,
+        ) callconv(.winapi) HRESULT,
+        GetCurrentTransform: *const fn (
+            *IDWritePixelSnapping,
+            ?*anyopaque,
+            *DWRITE_MATRIX,
+        ) callconv(.winapi) HRESULT,
+        GetPixelsPerDip: *const fn (
+            *IDWritePixelSnapping,
+            ?*anyopaque,
+            *FLOAT,
+        ) callconv(.winapi) HRESULT,
+    };
+
+    pub fn Release(self: *IDWritePixelSnapping) ULONG {
+        return self.v.Release(self);
+    }
+};
+
+const IDWriteTextRenderer = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IDWriteTextRenderer,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IDWriteTextRenderer) callconv(.winapi) ULONG,
+        Release: *const fn (*IDWriteTextRenderer) callconv(.winapi) ULONG,
+
+        IsTextRendererDisabled: *const fn (
+            *IDWriteTextRenderer,
+            ?*anyopaque,
+            *BOOL,
+        ) callconv(.winapi) HRESULT,
+        GetCurrentTransform: *const fn (
+            *IDWriteTextRenderer,
+            ?*anyopaque,
+            *DWRITE_MATRIX,
+        ) callconv(.winapi) HRESULT,
+        GetPixelsPerDip: *const fn (
+            *IDWriteTextRenderer,
+            ?*anyopaque,
+            *FLOAT,
+        ) callconv(.winapi) HRESULT,
+    };
+
+    pub fn Release(self: *IDWriteTextRenderer) ULONG {
+        return self.v.Release(self);
+    }
+};
+
 const IWICBitmap = extern struct {
     v: *const VTable,
 
@@ -1982,5 +2641,194 @@ const IWICPalette = extern struct {
         IsBlackWhite: *const fn (*IWICPalette, *BOOL) callconv(.winapi) HRESULT,
         IsGrayscale: *const fn (*IWICPalette, *BOOL) callconv(.winapi) HRESULT,
         HasAlpha: *const fn (*IWICPalette, *BOOL) callconv(.winapi) HRESULT,
+    };
+};
+
+const IUnknown = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IUnknown,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IUnknown) callconv(.winapi) ULONG,
+        Release: *const fn (*IUnknown) callconv(.winapi) ULONG,
+    };
+};
+
+const IDWriteFontFace = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IDWriteFontFace,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IDWriteFontFace) callconv(.winapi) ULONG,
+        Release: *const fn (*IDWriteFontFace) callconv(.winapi) ULONG,
+
+        GetType: *const fn (*IDWriteFontFace) callconv(.winapi) DWRITE_FONT_FACE_TYPE,
+        GetFiles: *const fn (
+            *IDWriteFontFace,
+            *UINT32,
+            *?[*]*IDWriteFontFile,
+        ) callconv(.winapi) HRESULT,
+        GetIndex: *const fn (*IDWriteFontFace) callconv(.winapi) UINT32,
+        GetSimulations: *const fn (
+            *IDWriteFontFace,
+        ) callconv(.winapi) DWRITE_FONT_SIMULATIONS,
+        IsSymbolFont: *const fn (*IDWriteFontFace) callconv(.winapi) BOOL,
+        GetMetrics: *const fn (
+            *IDWriteFontFace,
+            *DWRITE_FONT_METRICS,
+        ) callconv(.winapi) void,
+        GetGlyphCount: *const fn (*IDWriteFontFace) callconv(.winapi) UINT16,
+        GetDesignGlyphMetrics: *const fn (
+            *IDWriteFontFace,
+            [*]const UINT16,
+            UINT32,
+            [*]DWRITE_GLYPH_METRICS,
+            BOOL,
+        ) callconv(.winapi) HRESULT,
+        GetGlyphIndices: *const fn (
+            *IDWriteFontFace,
+            [*]const UINT32,
+            UINT32,
+            [*]UINT16,
+        ) callconv(.winapi) HRESULT,
+        TryGetFontTable: *const fn (
+            *IDWriteFontFace,
+            UINT32,
+            *[*]const anyopaque,
+            *UINT32,
+            **anyopaque,
+            *BOOL,
+        ) callconv(.winapi) HRESULT,
+        ReleaseFontTable: *const fn (
+            *IDWriteFontFace,
+            *anyopaque,
+        ) callconv(.winapi) void,
+        GetGlyphRunOutline: *const fn (
+            FLOAT,
+            [*]const UINT16,
+            ?[*]const FLOAT,
+            ?[*]const DWRITE_GLYPH_OFFSET,
+            UINT32,
+            BOOL,
+            BOOL,
+            *IDWriteGeometrySink,
+        ) callconv(.winapi) HRESULT,
+        GetRecommendedRenderingMode: *const fn (
+            FLOAT,
+            FLOAT,
+            DWRITE_MEASURING_MODE,
+            *IDWriteRenderingParams,
+            *DWRITE_RENDERING_MODE,
+        ) callconv(.winapi) HRESULT,
+        GetGdiCompatibleMetrics: *const fn (
+            FLOAT,
+            FLOAT,
+            ?*const DWRITE_MATRIX,
+            *DWRITE_FONT_METRICS,
+        ) callconv(.winapi) HRESULT,
+        GetGdiCompatibleGlyphMetrics: *const fn (
+            FLOAT,
+            FLOAT,
+            ?*const DWRITE_MATRIX,
+            BOOL,
+            [*]const UINT16,
+            UINT32,
+            [*]DWRITE_GLYPH_METRICS,
+            BOOL,
+        ) callconv(.winapi) HRESULT,
+    };
+};
+
+const IDWriteFontFile = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IDWriteFontFile,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IDWriteFontFile) callconv(.winapi) ULONG,
+        Release: *const fn (*IDWriteFontFile) callconv(.winapi) ULONG,
+
+        GetReferenceKey: *const fn (
+            *IDWriteFontFile,
+            *[*]const anyopaque,
+            *UINT32,
+        ) callconv(.winapi) HRESULT,
+        GetLoader: *const fn (
+            *IDWriteFontFile,
+            **IDWriteFontFileLoader,
+        ) callconv(.winapi) HRESULT,
+        Analyze: *const fn (
+            *IDWriteFontFile,
+            *BOOL,
+            *DWRITE_FONT_FILE_TYPE,
+            ?*DWRITE_FONT_FACE_TYPE,
+            *UINT32,
+        ) callconv(.winapi) HRESULT,
+    };
+};
+
+const IDWriteFontFileLoader = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IDWriteFontFileLoader,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IDWriteFontFileLoader) callconv(.winapi) ULONG,
+        Release: *const fn (*IDWriteFontFileLoader) callconv(.winapi) ULONG,
+
+        CreateStreamFromKey: *const fn (
+            *IDWriteFontFileLoader,
+            [*]const anyopaque,
+            UINT32,
+            **IDWriteFontFileStream,
+        ) callconv(.winapi) HRESULT,
+    };
+};
+
+const IDWriteFontFileStream = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IDWriteFontFileStream,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IDWriteFontFileStream) callconv(.winapi) ULONG,
+        Release: *const fn (*IDWriteFontFileStream) callconv(.winapi) ULONG,
+
+        ReadFileFragment: *const fn (
+            *IDWriteFontFileStream,
+            *[*]const anyopaque,
+            UINT64,
+            UINT64,
+            **anyopaque,
+        ) callconv(.winapi) HRESULT,
+        ReleaseFileFragment: *const fn (
+            *IDWriteFontFileStream,
+            *anyopaque,
+        ) callconv(.winapi) void,
+        GetFileSize: *const fn (
+            *IDWriteFontFileStream,
+            *UINT64,
+        ) callconv(.winapi) HRESULT,
+        GetLastWriteTime: *const fn (
+            *IDWriteFontFileStream,
+            *UINT64,
+        ) callconv(.winapi) HRESULT,
     };
 };
