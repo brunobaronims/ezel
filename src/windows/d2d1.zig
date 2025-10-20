@@ -193,6 +193,16 @@ const D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES = extern struct {
     radiusY: FLOAT,
 };
 
+const D2D1_LAYER_PARAMETERS = extern struct {
+    contentBounds: D2D1_RECT_F,
+    geometricMask: *ID2D1Geometry,
+    maskAntialiasMode: D2D1_ANTIALIAS_MODE,
+    maskTransform: D2D1_MATRIX_3X2_F,
+    opacity: FLOAT,
+    opacityBrush: *ID2D1Brush,
+    layerOptions: D2D1_LAYER_OPTIONS,
+};
+
 const DWRITE_TRIMMING = extern struct {
     granularity: DWRITE_TRIMMING_GRANULARITY,
     delimiter: UINT32,
@@ -288,6 +298,60 @@ const DWRITE_OVERHANG_METRICS = extern struct {
     top: FLOAT,
     right: FLOAT,
     bottom: FLOAT,
+};
+
+const DWRITE_TEXT_RANGE = extern struct {
+    startPosition: UINT32,
+    length: UINT32,
+};
+
+const DWRITE_FONT_FEATURE = extern struct {
+    nameTag: DWRITE_FONT_FEATURE_TAG,
+    parameter: UINT32,
+};
+
+const DWRITE_LINE_METRICS = extern struct {
+    length: UINT32,
+    trailingWhitespaceLength: UINT32,
+    newlineLength: UINT32,
+    height: FLOAT,
+    baseline: FLOAT,
+    isTrimmed: BOOL,
+};
+
+const DWRITE_TEXT_METRICS = extern struct {
+    left: FLOAT,
+    top: FLOAT,
+    width: FLOAT,
+    widthIncludingTrailingWhitespace: FLOAT,
+    height: FLOAT,
+    layoutWidth: FLOAT,
+    layoutHeight: FLOAT,
+    maxBidiReorderingDepth: UINT32,
+    lineCount: UINT32,
+};
+
+const DWRITE_CLUSTER_METRICS = extern struct {
+    width: FLOAT,
+    length: UINT16,
+    canWrapLineAfter: UINT16 = 1,
+    isWhitespace: UINT16 = 1,
+    isNewline: UINT16 = 1,
+    isSoftHyphen: UINT16 = 1,
+    isRightToLeft: UINT16 = 1,
+    padding: UINT16 = 11,
+};
+
+const DWRITE_HIT_TEST_METRICS = extern struct {
+    textPosition: UINT32,
+    length: UINT32,
+    left: FLOAT,
+    top: FLOAT,
+    width: FLOAT,
+    height: FLOAT,
+    bidiLevel: UINT32,
+    isText: BOOL,
+    isTrimmed: BOOL,
 };
 
 const D2D1_FACTORY_TYPE = enum(c_int) {
@@ -402,6 +466,12 @@ const D2D1_TEXT_ANTIALIAS_MODE = enum(c_int) {
     D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE = 2,
     D2D1_TEXT_ANTIALIAS_MODE_ALIASED = 3,
     D2D1_TEXT_ANTIALIAS_MODE_FORCE_DWORD = 0xffffffff,
+};
+
+const D2D1_LAYER_OPTIONS = enum(c_int) {
+    D2D1_LAYER_OPTIONS_NONE = 0x00000000,
+    D2D1_LAYER_OPTIONS_INITIALIZE_FOR_CLEARTYPE = 0x00000001,
+    D2D1_LAYER_OPTIONS_FORCE_DWORD = 0xffffffff,
 };
 
 const DWRITE_PIXEL_GEOMETRY = enum(c_int) {
@@ -800,6 +870,90 @@ const DWRITE_INFORMATIONAL_STRING_ID = enum(c_int) {
     DWRITE_INFORMATIONAL_STRING_PREFERRED_FAMILY_NAMES,
     DWRITE_INFORMATIONAL_STRING_PREFERRED_SUBFAMILY_NAMES,
     DWRITE_INFORMATIONAL_STRING_WWS_FAMILY_NAME,
+};
+
+const DWRITE_FONT_FEATURE_TAG = enum(c_int) {
+    DWRITE_FONT_FEATURE_TAG_ALTERNATIVE_FRACTIONS,
+    DWRITE_FONT_FEATURE_TAG_PETITE_CAPITALS_FROM_CAPITALS,
+    DWRITE_FONT_FEATURE_TAG_SMALL_CAPITALS_FROM_CAPITALS,
+    DWRITE_FONT_FEATURE_TAG_CONTEXTUAL_ALTERNATES,
+    DWRITE_FONT_FEATURE_TAG_CASE_SENSITIVE_FORMS,
+    DWRITE_FONT_FEATURE_TAG_GLYPH_COMPOSITION_DECOMPOSITION,
+    DWRITE_FONT_FEATURE_TAG_CONTEXTUAL_LIGATURES,
+    DWRITE_FONT_FEATURE_TAG_CAPITAL_SPACING,
+    DWRITE_FONT_FEATURE_TAG_CONTEXTUAL_SWASH,
+    DWRITE_FONT_FEATURE_TAG_CURSIVE_POSITIONING,
+    DWRITE_FONT_FEATURE_TAG_DEFAULT,
+    DWRITE_FONT_FEATURE_TAG_DISCRETIONARY_LIGATURES,
+    DWRITE_FONT_FEATURE_TAG_EXPERT_FORMS,
+    DWRITE_FONT_FEATURE_TAG_FRACTIONS,
+    DWRITE_FONT_FEATURE_TAG_FULL_WIDTH,
+    DWRITE_FONT_FEATURE_TAG_HALF_FORMS,
+    DWRITE_FONT_FEATURE_TAG_HALANT_FORMS,
+    DWRITE_FONT_FEATURE_TAG_ALTERNATE_HALF_WIDTH,
+    DWRITE_FONT_FEATURE_TAG_HISTORICAL_FORMS,
+    DWRITE_FONT_FEATURE_TAG_HORIZONTAL_KANA_ALTERNATES,
+    DWRITE_FONT_FEATURE_TAG_HISTORICAL_LIGATURES,
+    DWRITE_FONT_FEATURE_TAG_HALF_WIDTH,
+    DWRITE_FONT_FEATURE_TAG_HOJO_KANJI_FORMS,
+    DWRITE_FONT_FEATURE_TAG_JIS04_FORMS,
+    DWRITE_FONT_FEATURE_TAG_JIS78_FORMS,
+    DWRITE_FONT_FEATURE_TAG_JIS83_FORMS,
+    DWRITE_FONT_FEATURE_TAG_JIS90_FORMS,
+    DWRITE_FONT_FEATURE_TAG_KERNING,
+    DWRITE_FONT_FEATURE_TAG_STANDARD_LIGATURES,
+    DWRITE_FONT_FEATURE_TAG_LINING_FIGURES,
+    DWRITE_FONT_FEATURE_TAG_LOCALIZED_FORMS,
+    DWRITE_FONT_FEATURE_TAG_MARK_POSITIONING,
+    DWRITE_FONT_FEATURE_TAG_MATHEMATICAL_GREEK,
+    DWRITE_FONT_FEATURE_TAG_MARK_TO_MARK_POSITIONING,
+    DWRITE_FONT_FEATURE_TAG_ALTERNATE_ANNOTATION_FORMS,
+    DWRITE_FONT_FEATURE_TAG_NLC_KANJI_FORMS,
+    DWRITE_FONT_FEATURE_TAG_OLD_STYLE_FIGURES,
+    DWRITE_FONT_FEATURE_TAG_ORDINALS,
+    DWRITE_FONT_FEATURE_TAG_PROPORTIONAL_ALTERNATE_WIDTH,
+    DWRITE_FONT_FEATURE_TAG_PETITE_CAPITALS,
+    DWRITE_FONT_FEATURE_TAG_PROPORTIONAL_FIGURES,
+    DWRITE_FONT_FEATURE_TAG_PROPORTIONAL_WIDTHS,
+    DWRITE_FONT_FEATURE_TAG_QUARTER_WIDTHS,
+    DWRITE_FONT_FEATURE_TAG_REQUIRED_LIGATURES,
+    DWRITE_FONT_FEATURE_TAG_RUBY_NOTATION_FORMS,
+    DWRITE_FONT_FEATURE_TAG_STYLISTIC_ALTERNATES,
+    DWRITE_FONT_FEATURE_TAG_SCIENTIFIC_INFERIORS,
+    DWRITE_FONT_FEATURE_TAG_SMALL_CAPITALS,
+    DWRITE_FONT_FEATURE_TAG_SIMPLIFIED_FORMS,
+    DWRITE_FONT_FEATURE_TAG_STYLISTIC_SET_1,
+    DWRITE_FONT_FEATURE_TAG_STYLISTIC_SET_2,
+    DWRITE_FONT_FEATURE_TAG_STYLISTIC_SET_3,
+    DWRITE_FONT_FEATURE_TAG_STYLISTIC_SET_4,
+    DWRITE_FONT_FEATURE_TAG_STYLISTIC_SET_5,
+    DWRITE_FONT_FEATURE_TAG_STYLISTIC_SET_6,
+    DWRITE_FONT_FEATURE_TAG_STYLISTIC_SET_7,
+    DWRITE_FONT_FEATURE_TAG_STYLISTIC_SET_8,
+    DWRITE_FONT_FEATURE_TAG_STYLISTIC_SET_9,
+    DWRITE_FONT_FEATURE_TAG_STYLISTIC_SET_10,
+    DWRITE_FONT_FEATURE_TAG_STYLISTIC_SET_11,
+    DWRITE_FONT_FEATURE_TAG_STYLISTIC_SET_12,
+    DWRITE_FONT_FEATURE_TAG_STYLISTIC_SET_13,
+    DWRITE_FONT_FEATURE_TAG_STYLISTIC_SET_14,
+    DWRITE_FONT_FEATURE_TAG_STYLISTIC_SET_15,
+    DWRITE_FONT_FEATURE_TAG_STYLISTIC_SET_16,
+    DWRITE_FONT_FEATURE_TAG_STYLISTIC_SET_17,
+    DWRITE_FONT_FEATURE_TAG_STYLISTIC_SET_18,
+    DWRITE_FONT_FEATURE_TAG_STYLISTIC_SET_19,
+    DWRITE_FONT_FEATURE_TAG_STYLISTIC_SET_20,
+    DWRITE_FONT_FEATURE_TAG_SUBSCRIPT,
+    DWRITE_FONT_FEATURE_TAG_SUPERSCRIPT,
+    DWRITE_FONT_FEATURE_TAG_SWASH,
+    DWRITE_FONT_FEATURE_TAG_TITLING,
+    DWRITE_FONT_FEATURE_TAG_TRADITIONAL_NAME_FORMS,
+    DWRITE_FONT_FEATURE_TAG_TABULAR_FIGURES,
+    DWRITE_FONT_FEATURE_TAG_TRADITIONAL_FORMS,
+    DWRITE_FONT_FEATURE_TAG_THIRD_WIDTHS,
+    DWRITE_FONT_FEATURE_TAG_UNICASE,
+    DWRITE_FONT_FEATURE_TAG_VERTICAL_WRITING,
+    DWRITE_FONT_FEATURE_TAG_VERTICAL_ALTERNATES_AND_ROTATION,
+    DWRITE_FONT_FEATURE_TAG_SLASHED_ZERO,
 };
 
 extern "d2d1" fn D2D1CreateFactory(
@@ -1338,7 +1492,119 @@ const ID2D1RenderTarget = extern struct {
             *ID2D1RenderTarget,
             [*]const WCHAR,
             UINT32,
+            *IDWriteTextFormat,
+            *const D2D1_RECT_F,
+            *ID2D1Brush,
+            D2D1_DRAW_TEXT_OPTIONS,
+            DWRITE_MEASURING_MODE,
         ) callconv(.winapi) void,
+        DrawTextLayout: *const fn (
+            *ID2D1RenderTarget,
+            D2D1_POINT_2F,
+            *IDWriteTextLayout,
+            *ID2D1Brush,
+            D2D1_DRAW_TEXT_OPTIONS,
+        ) callconv(.winapi) void,
+        DrawGlyphRun: *const fn (
+            *ID2D1RenderTarget,
+            D2D1_POINT_2F,
+            *const DWRITE_GLYPH_RUN,
+            *ID2D1Brush,
+            DWRITE_MEASURING_MODE,
+        ) callconv(.winapi) void,
+        SetTransform: *const fn (
+            *ID2D1RenderTarget,
+            *const D2D1_MATRIX_3X2_F,
+        ) callconv(.winapi) void,
+        GetTransform: *const fn (
+            *ID2D1RenderTarget,
+            *D2D1_MATRIX_3X2_F,
+        ) callconv(.winapi) void,
+        SetAntialiasMode: *const fn (
+            *ID2D1RenderTarget,
+            D2D1_ANTIALIAS_MODE,
+        ) callconv(.winapi) void,
+        GetAntialiasMode: *const fn (
+            *ID2D1RenderTarget,
+        ) callconv(.winapi) D2D1_ANTIALIAS_MODE,
+        SetTextAntialiasMode: *const fn (
+            *ID2D1RenderTarget,
+            D2D1_TEXT_ANTIALIAS_MODE,
+        ) callconv(.winapi) void,
+        GetTextAntialiasMode: *const fn (
+            *ID2D1RenderTarget,
+        ) callconv(.winapi) D2D1_TEXT_ANTIALIAS_MODE,
+        SetTextRenderingParams: *const fn (
+            *ID2D1RenderTarget,
+            ?*IDWriteRenderingParams,
+        ) callconv(.winapi) void,
+        GetTextRenderingParams: *const fn (
+            *ID2D1RenderTarget,
+            *?*IDWriteRenderingParams,
+        ) callconv(.winapi) void,
+        SetTags: *const fn (
+            *ID2D1RenderTarget,
+            D2D1_TAG,
+            D2D1_TAG,
+        ) callconv(.winapi) void,
+        GetTags: *const fn (
+            *ID2D1RenderTarget,
+            ?*D2D1_TAG,
+            ?*D2D1_TAG,
+        ) callconv(.winapi) void,
+        PushLayer: *const fn (
+            *ID2D1RenderTarget,
+            *const D2D1_LAYER_PARAMETERS,
+            ?*ID2D1Layer,
+        ) callconv(.winapi) void,
+        PopLayer: *const fn (*ID2D1RenderTarget) callconv(.winapi) void,
+        Flush: *const fn (
+            *ID2D1RenderTarget,
+            ?*D2D1_TAG,
+            ?*D2D1_TAG,
+        ) callconv(.winapi) HRESULT,
+        SaveDrawingState: *const fn (
+            *ID2D1RenderTarget,
+            *ID2D1DrawingStateBlock,
+        ) callconv(.winapi) void,
+        RestoreDrawingState: *const fn (
+            *ID2D1RenderTarget,
+            *ID2D1DrawingStateBlock,
+        ) callconv(.winapi) void,
+        PushAxisAlignedClip: *const fn (
+            *ID2D1RenderTarget,
+            *const D2D1_RECT_F,
+            D2D1_ANTIALIAS_MODE,
+        ) callconv(.winapi) void,
+        PopAxisAlignedClip: *const fn (*ID2D1RenderTarget) callconv(.winapi) void,
+        Clear: *const fn (
+            *ID2D1RenderTarget,
+            ?*const D2D1_COLOR_F,
+        ) callconv(.winapi) void,
+        BeginDraw: *const fn (*ID2D1RenderTarget) callconv(.winapi) void,
+        EndDraw: *const fn (
+            *ID2D1RenderTarget,
+            ?*D2D1_TAG,
+            ?*D2D1_TAG,
+        ) callconv(.winapi) HRESULT,
+        GetPixelFormat: *const fn (*ID2D1RenderTarget) callconv(.winapi) D2D1_PIXEL_FORMAT,
+        SetDpi: *const fn (
+            *ID2D1RenderTarget,
+            FLOAT,
+            FLOAT,
+        ) callconv(.winapi) void,
+        GetDpi: *const fn (
+            *ID2D1RenderTarget,
+            *FLOAT,
+            *FLOAT,
+        ) callconv(.winapi) void,
+        GetSize: *const fn (*ID2D1RenderTarget) callconv(.winapi) D2D1_SIZE_F,
+        GetPixelSize: *const fn (*ID2D1RenderTarget) callconv(.winapi) D2D1_SIZE_U,
+        GetMaximumBitmapSize: *const fn (*ID2D1RenderTarget) callconv(.winapi) UINT32,
+        IsSupported: *const fn (
+            *ID2D1RenderTarget,
+            *const D2D1_RENDER_TARGET_PROPERTIES,
+        ) callconv(.winapi) BOOL,
     };
 
     pub fn Release(self: *ID2D1RenderTarget) ULONG {
@@ -2631,6 +2897,31 @@ const IUnknown = extern struct {
     };
 };
 
+const IDWriteTypography = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IDWriteTypography,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IDWriteTypography) callconv(.winapi) ULONG,
+        Release: *const fn (*IDWriteTypography) callconv(.winapi) ULONG,
+
+        AddFontFeature: *const fn (
+            *IDWriteTypography,
+            DWRITE_FONT_FEATURE,
+        ) callconv(.winapi) HRESULT,
+        GetFontFeatureCount: *const fn (*IDWriteTypography) callconv(.winapi) UINT32,
+        GetFontFeature: *const fn (
+            *IDWriteTypography,
+            UINT32,
+            *DWRITE_FONT_FEATURE,
+        ) callconv(.winapi) HRESULT,
+    };
+};
+
 const IDWriteFontFace = extern struct {
     v: *const VTable,
 
@@ -2908,10 +3199,320 @@ const IDWriteTextFormat = extern struct {
             *FLOAT,
             *FLOAT,
         ) callconv(.winapi) HRESULT,
-        GetFontCollection: *const fn () callconv(.winapi) HRESULT,
+        GetFontCollection: *const fn (
+            *IDWriteTextFormat,
+            **IDWriteFontCollection,
+        ) callconv(.winapi) HRESULT,
+        GetFontFamilyNameLength: *const fn (*IDWriteTextFormat) callconv(.winapi) UINT32,
+        GetFontFamilyName: *const fn (
+            *IDWriteTextFormat,
+            [*:0]WCHAR,
+            UINT32,
+        ) callconv(.winapi) HRESULT,
+        GetFontWeight: *const fn (*IDWriteTextFormat) callconv(.winapi) DWRITE_FONT_WEIGHT,
+        GetFontStyle: *const fn (*IDWriteTextFormat) callconv(.winapi) DWRITE_FONT_STYLE,
+        GetFontStretch: *const fn (*IDWriteTextFormat) callconv(.winapi) DWRITE_FONT_STRETCH,
+        GetFontSize: *const fn (*IDWriteTextFormat) callconv(.winapi) FLOAT,
+        GetLocaleNameLength: *const fn (*IDWriteTextFormat) callconv(.winapi) UINT32,
+        GetLocaleName: *const fn (
+            *IDWriteTextFormat,
+            [*:0]WCHAR,
+            UINT32,
+        ) callconv(.winapi) HRESULT,
     };
 
     pub fn Release(self: *IDWriteTextFormat) ULONG {
+        return self.v.Release(self);
+    }
+};
+
+const IDWriteTextLayout = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IDWriteTextLayout,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IDWriteTextLayout) callconv(.winapi) ULONG,
+        Release: *const fn (*IDWriteTextLayout) callconv(.winapi) ULONG,
+
+        SetTextAlignment: *const fn (
+            *IDWriteTextLayout,
+            DWRITE_TEXT_ALIGNMENT,
+        ) callconv(.winapi) HRESULT,
+        SetParagraphAlignment: *const fn (
+            *IDWriteTextLayout,
+            DWRITE_PARAGRAPH_ALIGNMENT,
+        ) callconv(.winapi) HRESULT,
+        SetWordWrapping: *const fn (
+            *IDWriteTextLayout,
+            DWRITE_WORD_WRAPPING,
+        ) callconv(.winapi) HRESULT,
+        SetReadingDirection: *const fn (
+            *IDWriteTextLayout,
+            DWRITE_READING_DIRECTION,
+        ) callconv(.winapi) HRESULT,
+        SetFlowDirection: *const fn (
+            *IDWriteTextLayout,
+            DWRITE_FLOW_DIRECTION,
+        ) callconv(.winapi) HRESULT,
+        SetIncrementalTabStop: *const fn (
+            *IDWriteTextLayout,
+            FLOAT,
+        ) callconv(.winapi) HRESULT,
+        SetTrimming: *const fn (
+            *IDWriteTextLayout,
+            *const DWRITE_TRIMMING,
+            ?*IDWriteInlineObject,
+        ) callconv(.winapi) HRESULT,
+        SetLineSpacing: *const fn (
+            *IDWriteTextLayout,
+            DWRITE_LINE_SPACING_METHOD,
+            FLOAT,
+            FLOAT,
+        ) callconv(.winapi) HRESULT,
+        GetTextAlignment: *const fn (
+            *IDWriteTextLayout,
+        ) callconv(.winapi) DWRITE_TEXT_ALIGNMENT,
+        GetParagraphAlignment: *const fn (
+            *IDWriteTextLayout,
+        ) callconv(.winapi) DWRITE_PARAGRAPH_ALIGNMENT,
+        GetWordWrapping: *const fn (
+            *IDWriteTextLayout,
+        ) callconv(.winapi) DWRITE_WORD_WRAPPING,
+        GetReadingDirection: *const fn (
+            *IDWriteTextLayout,
+        ) callconv(.winapi) DWRITE_READING_DIRECTION,
+        GetFlowDirection: *const fn (
+            *IDWriteTextLayout,
+        ) callconv(.winapi) DWRITE_FLOW_DIRECTION,
+        GetIncrementalTabStop: *const fn () callconv(.winapi) FLOAT,
+        GetTrimming: *const fn (
+            *IDWriteTextLayout,
+            *DWRITE_TRIMMING,
+            **IDWriteInlineObject,
+        ) callconv(.winapi) HRESULT,
+        GetLineSpacing: *const fn (
+            *IDWriteTextLayout,
+            *DWRITE_LINE_SPACING_METHOD,
+            *FLOAT,
+            *FLOAT,
+        ) callconv(.winapi) HRESULT,
+
+        SetMaxWidth: *const fn (
+            *IDWriteTextLayout,
+            FLOAT,
+        ) callconv(.winapi) HRESULT,
+        SetMaxHeight: *const fn (
+            *IDWriteTextLayout,
+            FLOAT,
+        ) callconv(.winapi) HRESULT,
+        SetFontCollection: *const fn (
+            *IDWriteTextLayout,
+            *IDWriteFontCollection,
+            DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        SetFontFamilyName: *const fn (
+            *IDWriteTextLayout,
+            [*:0]const WCHAR,
+            DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        SetFontWeight: *const fn (
+            *IDWriteTextLayout,
+            DWRITE_FONT_WEIGHT,
+            DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        SetFontStyle: *const fn (
+            *IDWriteTextLayout,
+            DWRITE_FONT_STYLE,
+            DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        SetFontStretch: *const fn (
+            *IDWriteTextLayout,
+            DWRITE_FONT_STRETCH,
+            DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        SetFontSize: *const fn (
+            *IDWriteTextLayout,
+            FLOAT,
+            DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        SetUnderline: *const fn (
+            *IDWriteTextLayout,
+            BOOL,
+            DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        SetStrikethrough: *const fn (
+            *IDWriteTextLayout,
+            BOOL,
+            DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        SetDrawingEffect: *const fn (
+            *IDWriteTextLayout,
+            *IUnknown,
+            DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        SetInlineObject: *const fn (
+            *IDWriteTextLayout,
+            *IDWriteInlineObject,
+            DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        SetTypography: *const fn (
+            *IDWriteTextLayout,
+            *IDWriteTypography,
+            DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        SetLocaleName: *const fn (
+            *IDWriteTextLayout,
+            [*:0]const WCHAR,
+            DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        GetMaxWidth: *const fn (*IDWriteTextLayout) callconv(.winapi) FLOAT,
+        GetMaxHeight: *const fn (*IDWriteTextLayout) callconv(.winapi) FLOAT,
+        GetFontCollection: *const fn (
+            *IDWriteTextLayout,
+            UINT32,
+            **IDWriteFontCollection,
+            ?*DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        GetFontFamilyNameLength: *const fn (
+            *IDWriteTextLayout,
+            UINT32,
+            *UINT32,
+            ?*DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        GetFontFamilyName: *const fn (
+            *IDWriteTextLayout,
+            UINT32,
+            [*:0]WCHAR,
+            UINT32,
+            ?*DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        GetFontWeight: *const fn (
+            *IDWriteTextLayout,
+            UINT32,
+            *DWRITE_FONT_WEIGHT,
+            ?*DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        GetFontStyle: *const fn (
+            *IDWriteTextLayout,
+            UINT32,
+            *DWRITE_FONT_STYLE,
+            ?*DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        GetFontStretch: *const fn (
+            *IDWriteTextLayout,
+            UINT32,
+            *DWRITE_FONT_STRETCH,
+            ?*DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        GetFontSize: *const fn (
+            *IDWriteTextLayout,
+            UINT32,
+            *FLOAT,
+            ?*DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        GetUnderline: *const fn (
+            *IDWriteTextLayout,
+            UINT32,
+            *BOOL,
+            ?*DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        GetStrikethrough: *const fn (
+            *IDWriteTextLayout,
+            UINT32,
+            *BOOL,
+            ?*DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        GetDrawingEffect: *const fn (
+            *IDWriteTextLayout,
+            UINT32,
+            **IUnknown,
+            ?*DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        GetInlineObject: *const fn (
+            *IDWriteTextLayout,
+            UINT32,
+            **IDWriteInlineObject,
+            ?*DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        GetTypography: *const fn (
+            *IDWriteTextLayout,
+            UINT32,
+            **IDWriteTypography,
+            ?*DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        GetLocaleNameLength: *const fn (
+            *IDWriteTextLayout,
+            UINT32,
+            *UINT32,
+            ?*DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        GetLocaleName: *const fn (
+            *IDWriteTextLayout,
+            UINT32,
+            [*:0]WCHAR,
+            UINT32,
+            ?*DWRITE_TEXT_RANGE,
+        ) callconv(.winapi) HRESULT,
+        Draw: *const fn (
+            *IDWriteTextLayout,
+            ?*anyopaque,
+            *IDWriteTextRenderer,
+            FLOAT,
+            FLOAT,
+        ) callconv(.winapi) HRESULT,
+        GetLineMetrics: *const fn (
+            *IDWriteTextLayout,
+            ?[*]DWRITE_LINE_METRICS,
+            UINT32,
+            *UINT32,
+        ) callconv(.winapi) HRESULT,
+        GetMetrics: *const fn (
+            *IDWriteTextLayout,
+            *DWRITE_OVERHANG_METRICS,
+        ) callconv(.winapi) HRESULT,
+        GetClusterMetrics: *const fn (
+            *IDWriteTextLayout,
+            ?[*]DWRITE_CLUSTER_METRICS,
+            UINT32,
+            *UINT32,
+        ) callconv(.winapi) HRESULT,
+        DetermineMinWidth: *const fn (
+            *IDWriteTextLayout,
+            *FLOAT,
+        ) callconv(.winapi) HRESULT,
+        HitTestPoint: *const fn (
+            *IDWriteTextLayout,
+            FLOAT,
+            FLOAT,
+            *BOOL,
+            *BOOL,
+            *DWRITE_HIT_TEST_METRICS,
+        ) callconv(.winapi) HRESULT,
+        HitTestTextPosition: *const fn (
+            *IDWriteTextLayout,
+            UINT32,
+            BOOL,
+            *FLOAT,
+            *FLOAT,
+            *DWRITE_HIT_TEST_METRICS,
+        ) callconv(.winapi) HRESULT,
+        HitTestTextRange: *const fn (
+            *IDWriteTextLayout,
+            UINT32,
+            UINT32,
+            FLOAT,
+            FLOAT,
+            ?[*]DWRITE_HIT_TEST_METRICS,
+            UINT32,
+            *UINT32,
+        ) callconv(.winapi) HRESULT,
+    };
+
+    pub fn Release(self: *IDWriteTextLayout) ULONG {
         return self.v.Release(self);
     }
 };
@@ -3095,6 +3696,24 @@ const IDWriteFontCollection = extern struct {
         ) callconv(.winapi) HRESULT,
         AddRef: *const fn (*IDWriteFontCollection) callconv(.winapi) ULONG,
         Release: *const fn (*IDWriteFontCollection) callconv(.winapi) ULONG,
+
+        GetFontFamilyCount: *const fn (*IDWriteFontCollection) callconv(.winapi) UINT32,
+        GetFontFamily: *const fn (
+            *IDWriteFontCollection,
+            UINT32,
+            **IDWriteFontFamily,
+        ) callconv(.winapi) HRESULT,
+        FindFamilyName: *const fn (
+            *IDWriteFontCollection,
+            [*:0]const WCHAR,
+            *UINT32,
+            *BOOL,
+        ) callconv(.winapi) HRESULT,
+        GetFontFromFontFace: *const fn (
+            *IDWriteFontCollection,
+            *IDWriteFontFace,
+            **IDWriteFont,
+        ) callconv(.winapi) HRESULT,
     };
 };
 
@@ -3170,7 +3789,24 @@ const IDWriteFontFamily = extern struct {
             **IDWriteFont,
         ) callconv(.winapi) HRESULT,
 
-        GetFamilyNames: *const fn () callconv(.winapi) HRESULT,
+        GetFamilyNames: *const fn (
+            *IDWriteFontFamily,
+            **IDWriteLocalizedStrings,
+        ) callconv(.winapi) HRESULT,
+        GetFirstMatchingFont: *const fn (
+            *IDWriteFontFamily,
+            DWRITE_FONT_WEIGHT,
+            DWRITE_FONT_STRETCH,
+            DWRITE_FONT_STYLE,
+            **IDWriteFont,
+        ) callconv(.winapi) HRESULT,
+        GetMatchingFonts: *const fn (
+            *IDWriteFontFamily,
+            DWRITE_FONT_WEIGHT,
+            DWRITE_FONT_STRETCH,
+            DWRITE_FONT_STYLE,
+            **IDWriteFontList,
+        ) callconv(.winapi) HRESULT,
     };
 };
 
