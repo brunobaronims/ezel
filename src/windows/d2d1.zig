@@ -24,6 +24,30 @@ const HWND = windows.HWND;
 const REFIID = *const GUID;
 const WCHAR = windows.WCHAR;
 
+pub fn NewFactory() !*ID2D1Factory {
+    var factory: *ID2D1Factory = undefined;
+
+    const hr = D2D1CreateFactory(
+        D2D1_FACTORY_TYPE.D2D1_FACTORY_TYPE_SINGLE_THREADED,
+        &IID_ID2D1Factory,
+        null,
+        &factory,
+    );
+    if (hr < 0) {
+        return error.FailedToCreateFactory;
+    }
+    std.log.info("{d}", .{hr});
+
+    return factory;
+}
+
+const IID_ID2D1Factory = GUID{
+    .Data1 = 0x06152247,
+    .Data2 = 0x6f50,
+    .Data3 = 0x465a,
+    .Data4 = [8]u8{ 0x92, 0x45, 0x11, 0x8b, 0xfd, 0x3b, 0x60, 0x07 },
+};
+
 const D2D1_RECT_F = extern struct {
     left: FLOAT,
     top: FLOAT,
@@ -357,7 +381,6 @@ const DWRITE_HIT_TEST_METRICS = extern struct {
 const D2D1_FACTORY_TYPE = enum(c_int) {
     D2D1_FACTORY_TYPE_SINGLE_THREADED = 0,
     D2D1_FACTORY_TYPE_MULTI_THREADED = 1,
-    D2D1_FACTORY_TYPE_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_DEBUG_LEVEL = enum(c_int) {
@@ -365,7 +388,6 @@ const D2D1_DEBUG_LEVEL = enum(c_int) {
     D2D1_DEBUG_LEVEL_ERROR = 1,
     D2D1_DEBUG_LEVEL_WARNING = 2,
     D2D1_DEBUG_LEVEL_INFORMATION = 3,
-    D2D1_DEBUG_LEVEL_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_CAP_STYLE = enum(c_int) {
@@ -373,7 +395,6 @@ const D2D1_CAP_STYLE = enum(c_int) {
     D2D1_CAP_STYLE_SQUARE = 1,
     D2D1_CAP_STYLE_ROUND = 2,
     D2D1_CAP_STYLE_TRIANGLE = 3,
-    D2D1_CAP_STYLE_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_LINE_JOIN = enum(c_int) {
@@ -381,7 +402,6 @@ const D2D1_LINE_JOIN = enum(c_int) {
     D2D1_LINE_JOIN_BEVEL = 1,
     D2D1_LINE_JOIN_ROUND = 2,
     D2D1_LINE_JOIN_MITER_OR_BEVEL = 3,
-    D2D1_LINE_JOIN_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_DASH_STYLE = enum(c_int) {
@@ -391,7 +411,6 @@ const D2D1_DASH_STYLE = enum(c_int) {
     D2D1_DASH_STYLE_DASH_DOT = 3,
     D2D1_DASH_STYLE_DASH_DOT_DOT = 4,
     D2D1_DASH_STYLE_CUSTOM = 5,
-    D2D1_DASH_STYLE_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_GEOMETRY_RELATION = enum(c_int) {
@@ -400,38 +419,32 @@ const D2D1_GEOMETRY_RELATION = enum(c_int) {
     D2D1_GEOMETRY_RELATION_IS_CONTAINED = 2,
     D2D1_GEOMETRY_RELATION_CONTAINS = 3,
     D2D1_GEOMETRY_RELATION_OVERLAP = 4,
-    D2D1_GEOMETRY_RELATION_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_GEOMETRY_SIMPLIFICATION_OPTION = enum(c_int) {
     D2D1_GEOMETRY_SIMPLIFICATION_OPTION_CUBICS_AND_LINES = 0,
     D2D1_GEOMETRY_SIMPLIFICATION_OPTION_LINES = 1,
-    D2D1_GEOMETRY_SIMPLIFICATION_OPTION_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_FILL_MODE = enum(c_int) {
     D2D1_FILL_MODE_ALTERNATE = 0,
     D2D1_FILL_MODE_WINDING = 1,
-    D2D1_FILL_MODE_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_PATH_SEGMENT = enum(c_int) {
     D2D1_PATH_SEGMENT_NONE = 0x00000000,
     D2D1_PATH_SEGMENT_FORCE_UNSTROKED = 0x00000001,
     D2D1_PATH_SEGMENT_FORCE_ROUND_LINE_JOIN = 0x00000002,
-    D2D1_PATH_SEGMENT_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_FIGURE_BEGIN = enum(c_int) {
     D2D1_FIGURE_BEGIN_FILLED = 0,
     D2D1_FIGURE_BEGIN_HOLLOW = 1,
-    D2D1_FIGURE_BEGIN_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_FIGURE_END = enum(c_int) {
     D2D1_FIGURE_END_OPEN = 0,
     D2D1_FIGURE_END_CLOSED = 1,
-    D2D1_FIGURE_END_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_COMBINE_MODE = enum(c_int) {
@@ -439,25 +452,21 @@ const D2D1_COMBINE_MODE = enum(c_int) {
     D2D1_COMBINE_MODE_INTERSECT = 1,
     D2D1_COMBINE_MODE_XOR = 2,
     D2D1_COMBINE_MODE_EXCLUDE = 3,
-    D2D1_COMBINE_MODE_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_SWEEP_DIRECTION = enum(c_int) {
     D2D1_SWEEP_DIRECTION_COUNTER_CLOCKWISE = 0,
     D2D1_SWEEP_DIRECTION_CLOCKWISE = 1,
-    D2D1_SWEEP_DIRECTION_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_ARC_SIZE = enum(c_int) {
     D2D1_ARC_SIZE_SMALL = 0,
     D2D1_ARC_SIZE_LARGE = 1,
-    D2D1_ARC_SIZE_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_ANTIALIAS_MODE = enum(c_int) {
     D2D1_ANTIALIAS_MODE_PER_PRIMITIVE = 0,
     D2D1_ANTIALIAS_MODE_ALIASED = 1,
-    D2D1_ANTIALIAS_MODE_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_TEXT_ANTIALIAS_MODE = enum(c_int) {
@@ -465,13 +474,16 @@ const D2D1_TEXT_ANTIALIAS_MODE = enum(c_int) {
     D2D1_TEXT_ANTIALIAS_MODE_CLEARTYPE = 1,
     D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE = 2,
     D2D1_TEXT_ANTIALIAS_MODE_ALIASED = 3,
-    D2D1_TEXT_ANTIALIAS_MODE_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_LAYER_OPTIONS = enum(c_int) {
     D2D1_LAYER_OPTIONS_NONE = 0x00000000,
     D2D1_LAYER_OPTIONS_INITIALIZE_FOR_CLEARTYPE = 0x00000001,
-    D2D1_LAYER_OPTIONS_FORCE_DWORD = 0xffffffff,
+};
+
+const D2D1_WINDOW_STATE = enum(c_int) {
+    D2D1_WINDOW_STATE_NONE = 0x0000000,
+    D2D1_WINDOW_STATE_OCCLUDED = 0x0000001,
 };
 
 const DWRITE_PIXEL_GEOMETRY = enum(c_int) {
@@ -602,7 +614,6 @@ const WICBitmapPaletteType = enum(c_int) {
     WICBitmapPaletteTypeFixedGray4 = 0xa,
     WICBitmapPaletteTypeFixedGray16 = 0xb,
     WICBitmapPaletteTypeFixedGray256 = 0xc,
-    WICBITMAPPALETTETYPE_FORCE_DWORD = 0x7fffffff,
 };
 
 const DXGI_FORMAT = enum(c_int) {
@@ -735,67 +746,57 @@ const D2D1_ALPHA_MODE = enum(c_int) {
     D2D1_ALPHA_MODE_PREMULTIPLIED = 1,
     D2D1_ALPHA_MODE_STRAIGHT = 2,
     D2D1_ALPHA_MODE_IGNORE = 3,
-    D2D1_ALPHA_MODE_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_RENDER_TARGET_TYPE = enum(c_int) {
     D2D1_RENDER_TARGET_TYPE_DEFAULT = 0,
     D2D1_RENDER_TARGET_TYPE_SOFTWARE = 1,
     D2D1_RENDER_TARGET_TYPE_HARDWARE = 2,
-    D2D1_RENDER_TARGET_TYPE_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_RENDER_TARGET_USAGE = enum(c_int) {
     D2D1_RENDER_TARGET_USAGE_NONE = 0x00000000,
     D2D1_RENDER_TARGET_USAGE_FORCE_BITMAP_REMOTING = 0x00000001,
     D2D1_RENDER_TARGET_USAGE_GDI_COMPATIBLE = 0x00000002,
-    D2D1_RENDER_TARGET_USAGE_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_FEATURE_LEVEL = enum(c_int) {
     D2D1_FEATURE_LEVEL_DEFAULT = 0,
     D2D1_FEATURE_LEVEL_9,
     D2D1_FEATURE_LEVEL_10,
-    D2D1_FEATURE_LEVEL_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_PRESENT_OPTIONS = enum(c_int) {
     D2D1_PRESENT_OPTIONS_NONE = 0x00000000,
     D2D1_PRESENT_OPTIONS_RETAIN_CONTENTS = 0x00000001,
     D2D1_PRESENT_OPTIONS_IMMEDIATELY = 0x00000002,
-    D2D1_PRESENT_OPTIONS_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_EXTEND_MODE = enum(c_int) {
     D2D1_EXTEND_MODE_CLAMP = 0,
     D2D1_EXTEND_MODE_WRAP = 1,
     D2D1_EXTEND_MODE_MIRROR = 2,
-    D2D1_EXTEND_MODE_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_BITMAP_INTERPOLATION_MODE = enum(c_int) {
     D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR,
     D2D1_BITMAP_INTERPOLATION_MODE_LINEAR,
-    D2D1_BITMAP_INTERPOLATION_MODE_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_GAMMA = enum(c_int) {
     D2D1_GAMMA_2_2 = 0,
     D2D1_GAMMA_1_0 = 1,
-    D2D1_GAMMA_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_COMPATIBLE_RENDER_TARGET_OPTIONS = enum(c_int) {
     D2D1_COMPATIBLE_RENDER_TARGET_OPTIONS_NONE = 0x00000000,
     D2D1_COMPATIBLE_RENDER_TARGET_OPTIONS_GDI_COMPATIBLE = 0x00000001,
-    D2D1_COMPATIBLE_RENDER_TARGET_OPTIONS_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_OPACITY_MASK_CONTENT = enum(c_int) {
     D2D1_OPACITY_MASK_CONTENT_GRAPHICS = 0,
     D2D1_OPACITY_MASK_CONTENT_TEXT_NATURAL = 1,
     D2D1_OPACITY_MASK_CONTENT_TEXT_GDI_COMPATIBLE = 2,
-    D2D1_OPACITY_MASK_CONTENT_FORCE_DWORD = 0xffffffff,
 };
 
 const D2D1_DRAW_TEXT_OPTIONS = enum(c_int) {
@@ -804,7 +805,6 @@ const D2D1_DRAW_TEXT_OPTIONS = enum(c_int) {
     D2D1_DRAW_TEXT_OPTIONS_ENABLE_COLOR_FONT = 0x00000004,
     D2D1_DRAW_TEXT_OPTIONS_DISABLE_COLOR_BITMAP_SNAPPING = 0x00000008,
     D2D1_DRAW_TEXT_OPTIONS_NONE = 0x00000000,
-    D2D1_DRAW_TEXT_OPTIONS_FORCE_DWORD = 0xffffffff,
 };
 
 const DWRITE_FONT_FACE_TYPE = enum(c_int) {
@@ -960,7 +960,7 @@ extern "d2d1" fn D2D1CreateFactory(
     factoryType: D2D1_FACTORY_TYPE,
     riid: REFIID,
     pFactoryOptions: ?*const D2D1_FACTORY_OPTIONS,
-    ppIFactory: *?*ID2D1Factory,
+    ppIFactory: **ID2D1Factory,
 ) callconv(.winapi) HRESULT;
 
 const ID2D1Factory = extern struct {
@@ -1017,14 +1017,36 @@ const ID2D1Factory = extern struct {
             **ID2D1StrokeStyle,
         ) callconv(.winapi) HRESULT,
         CreateDrawingStateBlock: *const fn (
+            *ID2D1Factory,
             ?*const D2D1_DRAWING_STATE_DESCRIPTION,
             ?*IDWriteRenderingParams,
             **ID2D1DrawingStateBlock,
+        ) callconv(.winapi) HRESULT,
+        CreateWicBitmapRenderTarget: *const fn (
+            *ID2D1Factory,
+            *IWICBitmap,
+            *const D2D1_RENDER_TARGET_PROPERTIES,
+            **ID2D1RenderTarget,
+        ) callconv(.winapi) HRESULT,
+        CreateHwndRenderTarget: *const fn (
+            *ID2D1Factory,
+            *const D2D1_RENDER_TARGET_PROPERTIES,
+            *const D2D1_HWND_RENDER_TARGET_PROPERTIES,
+            **ID2D1HwndRenderTarget,
         ) callconv(.winapi) HRESULT,
     };
 
     pub fn Release(self: *ID2D1Factory) ULONG {
         return self.v.Release(self);
+    }
+
+    pub fn GetDesktopDpi(self: *ID2D1Factory) struct { x: FLOAT, y: FLOAT } {
+        var dpiX: FLOAT = 0;
+        var dpiY: FLOAT = 0;
+
+        self.v.GetDesktopDpi(self, &dpiX, &dpiY);
+
+        return .{ .x = dpiX, .y = dpiY };
     }
 };
 
@@ -1608,6 +1630,304 @@ const ID2D1RenderTarget = extern struct {
     };
 
     pub fn Release(self: *ID2D1RenderTarget) ULONG {
+        return self.v.Release(self);
+    }
+};
+
+const ID2D1HwndRenderTarget = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *ID2D1HwndRenderTarget,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*ID2D1HwndRenderTarget) callconv(.winapi) ULONG,
+        Release: *const fn (*ID2D1HwndRenderTarget) callconv(.winapi) ULONG,
+
+        GetFactory: *const fn (
+            *ID2D1HwndRenderTarget,
+            **ID2D1Factory,
+        ) callconv(.winapi) void,
+
+        CreateBitmap: *const fn (
+            *ID2D1HwndRenderTarget,
+            ?*const anyopaque,
+            UINT32,
+            *const D2D1_BITMAP_PROPERTIES,
+            **ID2D1Bitmap,
+        ) callconv(.winapi) HRESULT,
+        CreateBitmapFromWicBitmap: *const fn (
+            *ID2D1HwndRenderTarget,
+            *IWICBitmapSource,
+            ?*const D2D1_BITMAP_PROPERTIES,
+            **ID2D1Bitmap,
+        ) callconv(.winapi) HRESULT,
+        CreateSharedBitmap: *const fn (
+            *ID2D1HwndRenderTarget,
+            REFIID,
+            *anyopaque,
+            ?*const D2D1_BITMAP_PROPERTIES,
+            **ID2D1Bitmap,
+        ) callconv(.winapi) HRESULT,
+        CreateBitmapBrush: *const fn (
+            *ID2D1HwndRenderTarget,
+            ?*ID2D1Bitmap,
+            ?*const D2D1_BITMAP_BRUSH_PROPERTIES,
+            ?*const D2D1_BRUSH_PROPERTIES,
+            **ID2D1BitmapBrush,
+        ) callconv(.winapi) HRESULT,
+        CreateSolidColorBrush: *const fn (
+            *ID2D1HwndRenderTarget,
+            *const D2D1_COLOR_F,
+            ?*const D2D1_BRUSH_PROPERTIES,
+            **ID2D1SolidColorBrush,
+        ) callconv(.winapi) HRESULT,
+        CreateGradientStopCollection: *const fn (
+            *ID2D1HwndRenderTarget,
+            [*]const D2D1_GRADIENT_STOP,
+            UINT32,
+            D2D1_GAMMA,
+            D2D1_EXTEND_MODE,
+            **ID2D1GradientStopCollection,
+        ) callconv(.winapi) HRESULT,
+        CreateLinearGradientBrush: *const fn (
+            *ID2D1HwndRenderTarget,
+            *const D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES,
+            ?*const D2D1_BRUSH_PROPERTIES,
+            *ID2D1GradientStopCollection,
+            **ID2D1LinearGradientBrush,
+        ) callconv(.winapi) HRESULT,
+        CreateRadialGradientBrush: *const fn (
+            *ID2D1HwndRenderTarget,
+            *const D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES,
+            ?*const D2D1_BRUSH_PROPERTIES,
+            *ID2D1GradientStopCollection,
+            **ID2D1RadialGradientBrush,
+        ) callconv(.winapi) HRESULT,
+        CreateCompatibleRenderTarget: *const fn (
+            *ID2D1HwndRenderTarget,
+            ?*const D2D1_SIZE_F,
+            ?*const D2D1_SIZE_U,
+            ?*const D2D1_PIXEL_FORMAT,
+            D2D1_COMPATIBLE_RENDER_TARGET_OPTIONS,
+            **ID2D1BitmapRenderTarget,
+        ) callconv(.winapi) HRESULT,
+        CreateLayer: *const fn (
+            *ID2D1HwndRenderTarget,
+            ?*const D2D1_SIZE_F,
+            **ID2D1Layer,
+        ) callconv(.winapi) HRESULT,
+        CreateMesh: *const fn (
+            *ID2D1HwndRenderTarget,
+            **ID2D1Mesh,
+        ) callconv(.winapi) HRESULT,
+        DrawLine: *const fn (
+            *ID2D1HwndRenderTarget,
+            D2D1_POINT_2F,
+            D2D1_POINT_2F,
+            *ID2D1Brush,
+            FLOAT,
+            ?*ID2D1StrokeStyle,
+        ) callconv(.winapi) void,
+        DrawRectangle: *const fn (
+            *ID2D1HwndRenderTarget,
+            *const D2D1_RECT_F,
+            *ID2D1Brush,
+            FLOAT,
+            ?*ID2D1StrokeStyle,
+        ) callconv(.winapi) void,
+        FillRectangle: *const fn (
+            *ID2D1HwndRenderTarget,
+            *const D2D1_RECT_F,
+            *ID2D1Brush,
+        ) callconv(.winapi) void,
+        DrawRoundedRectangle: *const fn (
+            *ID2D1HwndRenderTarget,
+            *const D2D1_ROUNDED_RECT,
+            *ID2D1Brush,
+            FLOAT,
+            ?*ID2D1StrokeStyle,
+        ) callconv(.winapi) void,
+        FillRoundedRectangle: *const fn (
+            *ID2D1HwndRenderTarget,
+            *const D2D1_ROUNDED_RECT,
+            *ID2D1Brush,
+        ) callconv(.winapi) void,
+        DrawEllipse: *const fn (
+            *ID2D1HwndRenderTarget,
+            *const D2D1_ELLIPSE,
+            *ID2D1Brush,
+            FLOAT,
+            ?*ID2D1StrokeStyle,
+        ) callconv(.winapi) void,
+        FillEllipse: *const fn (
+            *ID2D1HwndRenderTarget,
+            *const D2D1_ELLIPSE,
+            *ID2D1Brush,
+        ) callconv(.winapi) void,
+        DrawGeometry: *const fn (
+            *ID2D1HwndRenderTarget,
+            *ID2D1Geometry,
+            *ID2D1Brush,
+            FLOAT,
+            ?*ID2D1StrokeStyle,
+        ) callconv(.winapi) void,
+        FillGeometry: *const fn (
+            *ID2D1HwndRenderTarget,
+            *ID2D1Geometry,
+            *ID2D1Brush,
+            ?*ID2D1Brush,
+        ) callconv(.winapi) void,
+        FillMesh: *const fn (
+            *ID2D1HwndRenderTarget,
+            *ID2D1Mesh,
+            *ID2D1Brush,
+        ) callconv(.winapi) void,
+        FillOpacityMask: *const fn (
+            *ID2D1HwndRenderTarget,
+            *ID2D1Bitmap,
+            *ID2D1Brush,
+            D2D1_OPACITY_MASK_CONTENT,
+            ?*const D2D1_RECT_F,
+            ?*const D2D1_RECT_F,
+        ) callconv(.winapi) void,
+        DrawBitmap: *const fn (
+            *ID2D1HwndRenderTarget,
+            *ID2D1Bitmap,
+            ?*const D2D1_RECT_F,
+            FLOAT,
+            D2D1_BITMAP_INTERPOLATION_MODE,
+            ?*const D2D1_RECT_F,
+        ) callconv(.winapi) void,
+        DrawText: *const fn (
+            *ID2D1HwndRenderTarget,
+            [*]const WCHAR,
+            UINT32,
+            *IDWriteTextFormat,
+            *const D2D1_RECT_F,
+            *ID2D1Brush,
+            D2D1_DRAW_TEXT_OPTIONS,
+            DWRITE_MEASURING_MODE,
+        ) callconv(.winapi) void,
+        DrawTextLayout: *const fn (
+            *ID2D1HwndRenderTarget,
+            D2D1_POINT_2F,
+            *IDWriteTextLayout,
+            *ID2D1Brush,
+            D2D1_DRAW_TEXT_OPTIONS,
+        ) callconv(.winapi) void,
+        DrawGlyphRun: *const fn (
+            *ID2D1HwndRenderTarget,
+            D2D1_POINT_2F,
+            *const DWRITE_GLYPH_RUN,
+            *ID2D1Brush,
+            DWRITE_MEASURING_MODE,
+        ) callconv(.winapi) void,
+        SetTransform: *const fn (
+            *ID2D1HwndRenderTarget,
+            *const D2D1_MATRIX_3X2_F,
+        ) callconv(.winapi) void,
+        GetTransform: *const fn (
+            *ID2D1HwndRenderTarget,
+            *D2D1_MATRIX_3X2_F,
+        ) callconv(.winapi) void,
+        SetAntialiasMode: *const fn (
+            *ID2D1HwndRenderTarget,
+            D2D1_ANTIALIAS_MODE,
+        ) callconv(.winapi) void,
+        GetAntialiasMode: *const fn (
+            *ID2D1HwndRenderTarget,
+        ) callconv(.winapi) D2D1_ANTIALIAS_MODE,
+        SetTextAntialiasMode: *const fn (
+            *ID2D1HwndRenderTarget,
+            D2D1_TEXT_ANTIALIAS_MODE,
+        ) callconv(.winapi) void,
+        GetTextAntialiasMode: *const fn (
+            *ID2D1HwndRenderTarget,
+        ) callconv(.winapi) D2D1_TEXT_ANTIALIAS_MODE,
+        SetTextRenderingParams: *const fn (
+            *ID2D1HwndRenderTarget,
+            ?*IDWriteRenderingParams,
+        ) callconv(.winapi) void,
+        GetTextRenderingParams: *const fn (
+            *ID2D1HwndRenderTarget,
+            *?*IDWriteRenderingParams,
+        ) callconv(.winapi) void,
+        SetTags: *const fn (
+            *ID2D1HwndRenderTarget,
+            D2D1_TAG,
+            D2D1_TAG,
+        ) callconv(.winapi) void,
+        GetTags: *const fn (
+            *ID2D1HwndRenderTarget,
+            ?*D2D1_TAG,
+            ?*D2D1_TAG,
+        ) callconv(.winapi) void,
+        PushLayer: *const fn (
+            *ID2D1HwndRenderTarget,
+            *const D2D1_LAYER_PARAMETERS,
+            ?*ID2D1Layer,
+        ) callconv(.winapi) void,
+        PopLayer: *const fn (*ID2D1HwndRenderTarget) callconv(.winapi) void,
+        Flush: *const fn (
+            *ID2D1HwndRenderTarget,
+            ?*D2D1_TAG,
+            ?*D2D1_TAG,
+        ) callconv(.winapi) HRESULT,
+        SaveDrawingState: *const fn (
+            *ID2D1HwndRenderTarget,
+            *ID2D1DrawingStateBlock,
+        ) callconv(.winapi) void,
+        RestoreDrawingState: *const fn (
+            *ID2D1HwndRenderTarget,
+            *ID2D1DrawingStateBlock,
+        ) callconv(.winapi) void,
+        PushAxisAlignedClip: *const fn (
+            *ID2D1HwndRenderTarget,
+            *const D2D1_RECT_F,
+            D2D1_ANTIALIAS_MODE,
+        ) callconv(.winapi) void,
+        PopAxisAlignedClip: *const fn (*ID2D1HwndRenderTarget) callconv(.winapi) void,
+        Clear: *const fn (
+            *ID2D1HwndRenderTarget,
+            ?*const D2D1_COLOR_F,
+        ) callconv(.winapi) void,
+        BeginDraw: *const fn (*ID2D1HwndRenderTarget) callconv(.winapi) void,
+        EndDraw: *const fn (
+            *ID2D1HwndRenderTarget,
+            ?*D2D1_TAG,
+            ?*D2D1_TAG,
+        ) callconv(.winapi) HRESULT,
+        GetPixelFormat: *const fn (*ID2D1HwndRenderTarget) callconv(.winapi) D2D1_PIXEL_FORMAT,
+        SetDpi: *const fn (
+            *ID2D1HwndRenderTarget,
+            FLOAT,
+            FLOAT,
+        ) callconv(.winapi) void,
+        GetDpi: *const fn (
+            *ID2D1HwndRenderTarget,
+            *FLOAT,
+            *FLOAT,
+        ) callconv(.winapi) void,
+        GetSize: *const fn (*ID2D1HwndRenderTarget) callconv(.winapi) D2D1_SIZE_F,
+        GetPixelSize: *const fn (*ID2D1HwndRenderTarget) callconv(.winapi) D2D1_SIZE_U,
+        GetMaximumBitmapSize: *const fn (*ID2D1HwndRenderTarget) callconv(.winapi) UINT32,
+        IsSupported: *const fn (
+            *ID2D1HwndRenderTarget,
+            *const D2D1_RENDER_TARGET_PROPERTIES,
+        ) callconv(.winapi) BOOL,
+
+        CheckWindowState: *const fn (*ID2D1HwndRenderTarget) callconv(.winapi) D2D1_WINDOW_STATE,
+        Resize: *const fn (
+            *ID2D1HwndRenderTarget,
+            *const D2D1_SIZE_U,
+        ) callconv(.winapi) HRESULT,
+        GetHwnd: *const fn (*ID2D1HwndRenderTarget) callconv(.winapi) HWND,
+    };
+
+    pub fn Release(self: *ID2D1HwndRenderTarget) ULONG {
         return self.v.Release(self);
     }
 };
