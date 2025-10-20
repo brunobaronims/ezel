@@ -236,6 +236,60 @@ const DWRITE_GLYPH_OFFSET = extern struct {
     ascenderOffset: FLOAT,
 };
 
+const DWRITE_GLYPH_RUN = extern struct {
+    fontFace: *IDWriteFontFace,
+    fontEmSize: FLOAT,
+    glyphCount: UINT32,
+    glyphIndices: [*]const UINT16,
+    glyphAdvances: [*]const FLOAT,
+    glyphOffsets: [*]const DWRITE_GLYPH_OFFSET,
+    isSideways: BOOL,
+    bidiLevel: UINT32,
+};
+
+const DWRITE_GLYPH_RUN_DESCRIPTION = extern struct {
+    localeName: [*]const WCHAR,
+    string: [*]const WCHAR,
+    stringLength: UINT32,
+    clusterMap: [*]const UINT16,
+    textPosition: UINT32,
+};
+
+const DWRITE_UNDERLINE = extern struct {
+    width: FLOAT,
+    thickness: FLOAT,
+    offset: FLOAT,
+    runHeight: FLOAT,
+    readingDirection: DWRITE_READING_DIRECTION,
+    flowDirection: DWRITE_FLOW_DIRECTION,
+    localeName: [*]const WCHAR,
+    measuringMode: DWRITE_MEASURING_MODE,
+};
+
+const DWRITE_STRIKETHROUGH = extern struct {
+    width: FLOAT,
+    thickness: FLOAT,
+    offset: FLOAT,
+    readingDirection: DWRITE_READING_DIRECTION,
+    flowDirection: DWRITE_FLOW_DIRECTION,
+    localeName: [*]const WCHAR,
+    measuringMode: DWRITE_MEASURING_MODE,
+};
+
+const DWRITE_INLINE_OBJECT_METRICS = extern struct {
+    width: FLOAT,
+    height: FLOAT,
+    baseline: FLOAT,
+    supportsSideways: BOOL,
+};
+
+const DWRITE_OVERHANG_METRICS = extern struct {
+    left: FLOAT,
+    top: FLOAT,
+    right: FLOAT,
+    bottom: FLOAT,
+};
+
 const D2D1_FACTORY_TYPE = enum(c_int) {
     D2D1_FACTORY_TYPE_SINGLE_THREADED = 0,
     D2D1_FACTORY_TYPE_MULTI_THREADED = 1,
@@ -449,7 +503,7 @@ const DWRITE_FONT_STYLE = enum(c_int) {
     DWRITE_FONT_STYLE_ITALIC,
 };
 
-const DWRITE_FONT_STRECTH = enum(c_int) {
+const DWRITE_FONT_STRETCH = enum(c_int) {
     DWRITE_FONT_STRETCH_UNDEFINED = 0,
     DWRITE_FONT_STRETCH_ULTRA_CONDENSED = 1,
     DWRITE_FONT_STRETCH_EXTRA_CONDENSED = 2,
@@ -711,6 +765,41 @@ const DWRITE_FONT_FILE_TYPE = enum(c_int) {
     DWRITE_FONT_FILE_TYPE_VECTOR,
     DWRITE_FONT_FILE_TYPE_BITMAP,
     DWRITE_FONT_FILE_TYPE_TRUETYPE_COLLECTION,
+};
+
+const DWRITE_BREAK_CONDITION = enum(c_int) {
+    DWRITE_BREAK_CONDITION_NEUTRAL,
+    DWRITE_BREAK_CONDITION_CAN_BREAK,
+    DWRITE_BREAK_CONDITION_MAY_NOT_BREAK,
+    DWRITE_BREAK_CONDITION_MUST_BREAK,
+};
+
+const DWRITE_INFORMATIONAL_STRING_ID = enum(c_int) {
+    DWRITE_INFORMATIONAL_STRING_NONE,
+    DWRITE_INFORMATIONAL_STRING_COPYRIGHT_NOTICE,
+    DWRITE_INFORMATIONAL_STRING_VERSION_STRINGS,
+    DWRITE_INFORMATIONAL_STRING_TRADEMARK,
+    DWRITE_INFORMATIONAL_STRING_MANUFACTURER,
+    DWRITE_INFORMATIONAL_STRING_DESIGNER,
+    DWRITE_INFORMATIONAL_STRING_DESIGNER_URL,
+    DWRITE_INFORMATIONAL_STRING_DESCRIPTION,
+    DWRITE_INFORMATIONAL_STRING_FONT_VENDOR_URL,
+    DWRITE_INFORMATIONAL_STRING_LICENSE_DESCRIPTION,
+    DWRITE_INFORMATIONAL_STRING_LICENSE_INFO_URL,
+    DWRITE_INFORMATIONAL_STRING_WIN32_FAMILY_NAMES,
+    DWRITE_INFORMATIONAL_STRING_WIN32_SUBFAMILY_NAMES,
+    DWRITE_INFORMATIONAL_STRING_TYPOGRAPHIC_FAMILY_NAMES,
+    DWRITE_INFORMATIONAL_STRING_TYPOGRAPHIC_SUBFAMILY_NAMES,
+    DWRITE_INFORMATIONAL_STRING_SAMPLE_TEXT,
+    DWRITE_INFORMATIONAL_STRING_FULL_NAME,
+    DWRITE_INFORMATIONAL_STRING_POSTSCRIPT_NAME,
+    DWRITE_INFORMATIONAL_STRING_POSTSCRIPT_CID_NAME,
+    DWRITE_INFORMATIONAL_STRING_WEIGHT_STRETCH_STYLE_FAMILY_NAME,
+    DWRITE_INFORMATIONAL_STRING_DESIGN_SCRIPT_LANGUAGE_TAG,
+    DWRITE_INFORMATIONAL_STRING_SUPPORTED_SCRIPT_LANGUAGE_TAG,
+    DWRITE_INFORMATIONAL_STRING_PREFERRED_FAMILY_NAMES,
+    DWRITE_INFORMATIONAL_STRING_PREFERRED_SUBFAMILY_NAMES,
+    DWRITE_INFORMATIONAL_STRING_WWS_FAMILY_NAME,
 };
 
 extern "d2d1" fn D2D1CreateFactory(
@@ -2374,122 +2463,6 @@ const ID2D1PathGeometry = extern struct {
     };
 };
 
-const IDWriteRenderingParams = extern struct {
-    v: *const VTable,
-
-    const VTable = extern struct {
-        QueryInterface: *const fn (
-            *IDWriteRenderingParams,
-            REFIID,
-            *?*anyopaque,
-        ) callconv(.winapi) HRESULT,
-        AddRef: *const fn (*IDWriteRenderingParams) callconv(.winapi) ULONG,
-        Release: *const fn (*IDWriteRenderingParams) callconv(.winapi) ULONG,
-
-        GetGamma: *const fn (*IDWriteRenderingParams) callconv(.winapi) FLOAT,
-        GetEnhancedContrast: *const fn (*IDWriteRenderingParams) callconv(.winapi) FLOAT,
-        GetClearTypeLevel: *const fn (*IDWriteRenderingParams) callconv(.winapi) FLOAT,
-        GetPixelGeometry: *const fn (
-            *IDWriteRenderingParams,
-        ) callconv(.winapi) DWRITE_PIXEL_GEOMETRY,
-        GetRenderingMode: *const fn (
-            *IDWriteRenderingParams,
-        ) callconv(.winapi) DWRITE_RENDERING_MODE,
-    };
-
-    pub fn Release(self: *IDWriteRenderingParams) ULONG {
-        return self.v.Release(self);
-    }
-};
-
-const IDWriteTextFormat = extern struct {
-    v: *const VTable,
-
-    const VTable = extern struct {
-        QueryInterface: *const fn (
-            *IDWriteTextFormat,
-            REFIID,
-            *?*anyopaque,
-        ) callconv(.winapi) HRESULT,
-        AddRef: *const fn (*IDWriteTextFormat) callconv(.winapi) ULONG,
-        Release: *const fn (*IDWriteTextFormat) callconv(.winapi) ULONG,
-
-        SetTextAlignment: *const fn (*IDWriteTextFormat) callconv(.winapi) HRESULT,
-    };
-
-    pub fn Release(self: *IDWriteTextFormat) ULONG {
-        return self.v.Release(self);
-    }
-};
-
-const IDWritePixelSnapping = extern struct {
-    v: *const VTable,
-
-    const VTable = extern struct {
-        QueryInterface: *const fn (
-            *IDWritePixelSnapping,
-            REFIID,
-            *?*anyopaque,
-        ) callconv(.winapi) HRESULT,
-        AddRef: *const fn (*IDWritePixelSnapping) callconv(.winapi) ULONG,
-        Release: *const fn (*IDWritePixelSnapping) callconv(.winapi) ULONG,
-
-        IsPixelSnappingDisabled: *const fn (
-            *IDWritePixelSnapping,
-            ?*anyopaque,
-            *BOOL,
-        ) callconv(.winapi) HRESULT,
-        GetCurrentTransform: *const fn (
-            *IDWritePixelSnapping,
-            ?*anyopaque,
-            *DWRITE_MATRIX,
-        ) callconv(.winapi) HRESULT,
-        GetPixelsPerDip: *const fn (
-            *IDWritePixelSnapping,
-            ?*anyopaque,
-            *FLOAT,
-        ) callconv(.winapi) HRESULT,
-    };
-
-    pub fn Release(self: *IDWritePixelSnapping) ULONG {
-        return self.v.Release(self);
-    }
-};
-
-const IDWriteTextRenderer = extern struct {
-    v: *const VTable,
-
-    const VTable = extern struct {
-        QueryInterface: *const fn (
-            *IDWriteTextRenderer,
-            REFIID,
-            *?*anyopaque,
-        ) callconv(.winapi) HRESULT,
-        AddRef: *const fn (*IDWriteTextRenderer) callconv(.winapi) ULONG,
-        Release: *const fn (*IDWriteTextRenderer) callconv(.winapi) ULONG,
-
-        IsTextRendererDisabled: *const fn (
-            *IDWriteTextRenderer,
-            ?*anyopaque,
-            *BOOL,
-        ) callconv(.winapi) HRESULT,
-        GetCurrentTransform: *const fn (
-            *IDWriteTextRenderer,
-            ?*anyopaque,
-            *DWRITE_MATRIX,
-        ) callconv(.winapi) HRESULT,
-        GetPixelsPerDip: *const fn (
-            *IDWriteTextRenderer,
-            ?*anyopaque,
-            *FLOAT,
-        ) callconv(.winapi) HRESULT,
-    };
-
-    pub fn Release(self: *IDWriteTextRenderer) ULONG {
-        return self.v.Release(self);
-    }
-};
-
 const IWICBitmap = extern struct {
     v: *const VTable,
 
@@ -2829,6 +2802,420 @@ const IDWriteFontFileStream = extern struct {
         GetLastWriteTime: *const fn (
             *IDWriteFontFileStream,
             *UINT64,
+        ) callconv(.winapi) HRESULT,
+    };
+};
+
+const IDWriteRenderingParams = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IDWriteRenderingParams,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IDWriteRenderingParams) callconv(.winapi) ULONG,
+        Release: *const fn (*IDWriteRenderingParams) callconv(.winapi) ULONG,
+
+        GetGamma: *const fn (*IDWriteRenderingParams) callconv(.winapi) FLOAT,
+        GetEnhancedContrast: *const fn (*IDWriteRenderingParams) callconv(.winapi) FLOAT,
+        GetClearTypeLevel: *const fn (*IDWriteRenderingParams) callconv(.winapi) FLOAT,
+        GetPixelGeometry: *const fn (
+            *IDWriteRenderingParams,
+        ) callconv(.winapi) DWRITE_PIXEL_GEOMETRY,
+        GetRenderingMode: *const fn (
+            *IDWriteRenderingParams,
+        ) callconv(.winapi) DWRITE_RENDERING_MODE,
+    };
+
+    pub fn Release(self: *IDWriteRenderingParams) ULONG {
+        return self.v.Release(self);
+    }
+};
+
+const IDWriteTextFormat = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IDWriteTextFormat,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IDWriteTextFormat) callconv(.winapi) ULONG,
+        Release: *const fn (*IDWriteTextFormat) callconv(.winapi) ULONG,
+
+        SetTextAlignment: *const fn (
+            *IDWriteTextFormat,
+            DWRITE_TEXT_ALIGNMENT,
+        ) callconv(.winapi) HRESULT,
+        SetParagraphAlignment: *const fn (
+            *IDWriteTextFormat,
+            DWRITE_PARAGRAPH_ALIGNMENT,
+        ) callconv(.winapi) HRESULT,
+        SetWordWrapping: *const fn (
+            *IDWriteTextFormat,
+            DWRITE_WORD_WRAPPING,
+        ) callconv(.winapi) HRESULT,
+        SetReadingDirection: *const fn (
+            *IDWriteTextFormat,
+            DWRITE_READING_DIRECTION,
+        ) callconv(.winapi) HRESULT,
+        SetFlowDirection: *const fn (
+            *IDWriteTextFormat,
+            DWRITE_FLOW_DIRECTION,
+        ) callconv(.winapi) HRESULT,
+        SetIncrementalTabStop: *const fn (
+            *IDWriteTextFormat,
+            FLOAT,
+        ) callconv(.winapi) HRESULT,
+        SetTrimming: *const fn (
+            *IDWriteTextFormat,
+            *const DWRITE_TRIMMING,
+            ?*IDWriteInlineObject,
+        ) callconv(.winapi) HRESULT,
+        SetLineSpacing: *const fn (
+            *IDWriteTextFormat,
+            DWRITE_LINE_SPACING_METHOD,
+            FLOAT,
+            FLOAT,
+        ) callconv(.winapi) HRESULT,
+        GetTextAlignment: *const fn (
+            *IDWriteTextFormat,
+        ) callconv(.winapi) DWRITE_TEXT_ALIGNMENT,
+        GetParagraphAlignment: *const fn (
+            *IDWriteTextFormat,
+        ) callconv(.winapi) DWRITE_PARAGRAPH_ALIGNMENT,
+        GetWordWrapping: *const fn (
+            *IDWriteTextFormat,
+        ) callconv(.winapi) DWRITE_WORD_WRAPPING,
+        GetReadingDirection: *const fn (
+            *IDWriteTextFormat,
+        ) callconv(.winapi) DWRITE_READING_DIRECTION,
+        GetFlowDirection: *const fn (
+            *IDWriteTextFormat,
+        ) callconv(.winapi) DWRITE_FLOW_DIRECTION,
+        GetIncrementalTabStop: *const fn () callconv(.winapi) FLOAT,
+        GetTrimming: *const fn (
+            *IDWriteTextFormat,
+            *DWRITE_TRIMMING,
+            **IDWriteInlineObject,
+        ) callconv(.winapi) HRESULT,
+        GetLineSpacing: *const fn (
+            *IDWriteTextFormat,
+            *DWRITE_LINE_SPACING_METHOD,
+            *FLOAT,
+            *FLOAT,
+        ) callconv(.winapi) HRESULT,
+        GetFontCollection: *const fn () callconv(.winapi) HRESULT,
+    };
+
+    pub fn Release(self: *IDWriteTextFormat) ULONG {
+        return self.v.Release(self);
+    }
+};
+
+const IDWritePixelSnapping = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IDWritePixelSnapping,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IDWritePixelSnapping) callconv(.winapi) ULONG,
+        Release: *const fn (*IDWritePixelSnapping) callconv(.winapi) ULONG,
+
+        IsPixelSnappingDisabled: *const fn (
+            *IDWritePixelSnapping,
+            ?*anyopaque,
+            *BOOL,
+        ) callconv(.winapi) HRESULT,
+        GetCurrentTransform: *const fn (
+            *IDWritePixelSnapping,
+            ?*anyopaque,
+            *DWRITE_MATRIX,
+        ) callconv(.winapi) HRESULT,
+        GetPixelsPerDip: *const fn (
+            *IDWritePixelSnapping,
+            ?*anyopaque,
+            *FLOAT,
+        ) callconv(.winapi) HRESULT,
+    };
+
+    pub fn Release(self: *IDWritePixelSnapping) ULONG {
+        return self.v.Release(self);
+    }
+};
+
+const IDWriteTextRenderer = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IDWriteTextRenderer,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IDWriteTextRenderer) callconv(.winapi) ULONG,
+        Release: *const fn (*IDWriteTextRenderer) callconv(.winapi) ULONG,
+
+        IsTextRendererDisabled: *const fn (
+            *IDWriteTextRenderer,
+            ?*anyopaque,
+            *BOOL,
+        ) callconv(.winapi) HRESULT,
+        GetCurrentTransform: *const fn (
+            *IDWriteTextRenderer,
+            ?*anyopaque,
+            *DWRITE_MATRIX,
+        ) callconv(.winapi) HRESULT,
+        GetPixelsPerDip: *const fn (
+            *IDWriteTextRenderer,
+            ?*anyopaque,
+            *FLOAT,
+        ) callconv(.winapi) HRESULT,
+
+        DrawGlyphRun: *const fn (
+            *IDWriteTextRenderer,
+            ?*anyopaque,
+            FLOAT,
+            FLOAT,
+            DWRITE_MEASURING_MODE,
+            *const DWRITE_GLYPH_RUN,
+            *const DWRITE_GLYPH_RUN_DESCRIPTION,
+            ?*IUnknown,
+        ) callconv(.winapi) HRESULT,
+        DrawUnderline: *const fn (
+            *IDWriteTextRenderer,
+            ?*anyopaque,
+            FLOAT,
+            FLOAT,
+            *const DWRITE_UNDERLINE,
+            ?*IUnknown,
+        ) callconv(.winapi) HRESULT,
+        DrawStrikethrough: *const fn (
+            *IDWriteTextRenderer,
+            ?*anyopaque,
+            FLOAT,
+            FLOAT,
+            *const DWRITE_STRIKETHROUGH,
+            ?*IUnknown,
+        ) callconv(.winapi) HRESULT,
+        DrawInlineObject: *const fn (
+            *IDWriteTextRenderer,
+            ?*anyopaque,
+            FLOAT,
+            FLOAT,
+            *const IDWriteInlineObject,
+            BOOL,
+            BOOL,
+            ?*IUnknown,
+        ) callconv(.winapi) HRESULT,
+    };
+
+    pub fn Release(self: *IDWriteTextRenderer) ULONG {
+        return self.v.Release(self);
+    }
+};
+
+const IDWriteInlineObject = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IDWriteInlineObject,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IDWriteInlineObject) callconv(.winapi) ULONG,
+        Release: *const fn (*IDWriteInlineObject) callconv(.winapi) ULONG,
+
+        Draw: *const fn (
+            *IDWriteInlineObject,
+            ?*anyopaque,
+            *IDWriteTextRenderer,
+            FLOAT,
+            FLOAT,
+            BOOL,
+            BOOL,
+            ?*IUnknown,
+        ) callconv(.winapi) HRESULT,
+        GetMetrics: *const fn (
+            *IDWriteInlineObject,
+            *DWRITE_INLINE_OBJECT_METRICS,
+        ) callconv(.winapi) HRESULT,
+        GetOverhangMetrics: *const fn (
+            *IDWriteInlineObject,
+            *DWRITE_OVERHANG_METRICS,
+        ) callconv(.winapi) HRESULT,
+        GetBreakCondition: *const fn (
+            *IDWriteInlineObject,
+            *DWRITE_BREAK_CONDITION,
+            *DWRITE_BREAK_CONDITION,
+        ) callconv(.winapi) HRESULT,
+    };
+};
+
+const IDWriteFontList = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IDWriteFontList,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IDWriteFontList) callconv(.winapi) ULONG,
+        Release: *const fn (*IDWriteFontList) callconv(.winapi) ULONG,
+
+        GetFontCollection: *const fn (
+            *IDWriteFontList,
+            **IDWriteFontCollection,
+        ) callconv(.winapi) HRESULT,
+        GetFontCount: *const fn (*IDWriteFontList) callconv(.winapi) UINT32,
+        GetFont: *const fn (
+            *IDWriteFontList,
+            UINT32,
+            **IDWriteFont,
+        ) callconv(.winapi) HRESULT,
+    };
+};
+
+const IDWriteFontCollection = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IDWriteFontCollection,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IDWriteFontCollection) callconv(.winapi) ULONG,
+        Release: *const fn (*IDWriteFontCollection) callconv(.winapi) ULONG,
+    };
+};
+
+const IDWriteFont = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IDWriteFont,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IDWriteFont) callconv(.winapi) ULONG,
+        Release: *const fn (*IDWriteFont) callconv(.winapi) ULONG,
+
+        GetFontFamily: *const fn (
+            *IDWriteFont,
+            **IDWriteFontFamily,
+        ) callconv(.winapi) HRESULT,
+        GetWeight: *const fn (*IDWriteFont) callconv(.winapi) DWRITE_FONT_WEIGHT,
+        GetStretch: *const fn (*IDWriteFont) callconv(.winapi) DWRITE_FONT_STRETCH,
+        GetStyle: *const fn (*IDWriteFont) callconv(.winapi) DWRITE_FONT_STYLE,
+        IsSymbolFont: *const fn (*IDWriteFont) callconv(.winapi) BOOL,
+        GetFaceNames: *const fn (
+            *IDWriteFont,
+            **IDWriteLocalizedStrings,
+        ) callconv(.winapi) HRESULT,
+        GetInformationalStrings: *const fn (
+            *IDWriteFont,
+            DWRITE_INFORMATIONAL_STRING_ID,
+            *?*IDWriteLocalizedStrings,
+            *BOOL,
+        ) callconv(.winapi) HRESULT,
+        GetSimulations: *const fn (
+            *IDWriteFont,
+        ) callconv(.winapi) DWRITE_FONT_SIMULATIONS,
+        GetMetrics: *const fn (
+            *IDWriteFont,
+            *DWRITE_FONT_METRICS,
+        ) callconv(.winapi) void,
+        HasCharacter: *const fn (
+            *IDWriteFont,
+            UINT32,
+            *BOOL,
+        ) callconv(.winapi) HRESULT,
+        CreateFontFace: *const fn (
+            *IDWriteFont,
+            **IDWriteFontFace,
+        ) callconv(.winapi) HRESULT,
+    };
+};
+
+const IDWriteFontFamily = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IDWriteFontFamily,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IDWriteFontFamily) callconv(.winapi) ULONG,
+        Release: *const fn (*IDWriteFontFamily) callconv(.winapi) ULONG,
+
+        GetFontCollection: *const fn (
+            *IDWriteFontFamily,
+            **IDWriteFontCollection,
+        ) callconv(.winapi) HRESULT,
+        GetFontCount: *const fn (*IDWriteFontFamily) callconv(.winapi) UINT32,
+        GetFont: *const fn (
+            *IDWriteFontFamily,
+            UINT32,
+            **IDWriteFont,
+        ) callconv(.winapi) HRESULT,
+
+        GetFamilyNames: *const fn () callconv(.winapi) HRESULT,
+    };
+};
+
+const IDWriteLocalizedStrings = extern struct {
+    v: *const VTable,
+
+    const VTable = extern struct {
+        QueryInterface: *const fn (
+            *IDWriteLocalizedStrings,
+            REFIID,
+            *?*anyopaque,
+        ) callconv(.winapi) HRESULT,
+        AddRef: *const fn (*IDWriteLocalizedStrings) callconv(.winapi) ULONG,
+        Release: *const fn (*IDWriteLocalizedStrings) callconv(.winapi) ULONG,
+
+        GetCount: *const fn (
+            *IDWriteLocalizedStrings,
+        ) callconv(.winapi) UINT32,
+        FindLocaleName: *const fn (
+            *IDWriteLocalizedStrings,
+            [*:0]const WCHAR,
+            *UINT32,
+            *BOOL,
+        ) callconv(.winapi) HRESULT,
+        GetLocaleNameLength: *const fn (
+            *IDWriteLocalizedStrings,
+            UINT32,
+            *UINT32,
+        ) callconv(.winapi) HRESULT,
+        GetLocaleName: *const fn (
+            *IDWriteLocalizedStrings,
+            UINT32,
+            [*:0]WCHAR,
+            UINT32,
+        ) callconv(.winapi) HRESULT,
+        GetStringLength: *const fn (
+            *IDWriteLocalizedStrings,
+            UINT32,
+            *UINT32,
+        ) callconv(.winapi) HRESULT,
+        GetString: *const fn (
+            *IDWriteLocalizedStrings,
+            UINT32,
+            [*:0]WCHAR,
+            UINT32,
         ) callconv(.winapi) HRESULT,
     };
 };
