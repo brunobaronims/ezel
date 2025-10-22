@@ -1,12 +1,34 @@
 const std = @import("std");
-// const user32 = @import("windows/user32.zig");
-const d2d1 = @import("windows/d2d1.zig");
+const builtin = @import("builtin");
+const windows = @import("windows/root.zig");
 
-pub fn init() void {
-    const factory = d2d1.NewFactory() catch unreachable;
-    defer _ = factory.Release();
-    std.log.info("created factory!", .{});
+pub const Application = union(enum) {
+    windows: windows.Application,
 
-    const dpi = factory.GetDesktopDpi();
-    std.log.info("x dpi: {d}, y dpi: {d}", .{ dpi.x, dpi.y });
+    pub fn DrawRectangle(self: *Application) !void {
+        switch (self.*) {
+            inline else => |*app| app.DrawRectangle(),
+        }
+    }
+
+    pub fn Release(self: *Application) void {
+        switch (self.*) {
+            inline else => |*app| app.Release(),
+        }
+    }
+
+    pub fn run(self: *Application) void {
+        switch (self.*) {
+            inline else => |*app| app.run(),
+        }
+    }
+};
+
+pub fn NewApplication() !Application {
+    switch (builtin.target.os.tag) {
+        .windows => {
+            return Application{ .windows = try windows.NewApplication() };
+        },
+        else => @compileError("Unsupported OS"),
+    }
 }

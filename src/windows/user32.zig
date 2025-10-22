@@ -1,111 +1,128 @@
 const std = @import("std");
-const windows = std.os.windows;
+const d2d1 = @import("d2d1.zig");
+const windows = @import("root.zig");
 
-const HWND = windows.HWND;
-const UINT = windows.UINT;
-const WPARAM = windows.WPARAM;
-const LPARAM = windows.LPARAM;
-const LRESULT = windows.LRESULT;
-const HINSTANCE = windows.HINSTANCE;
-const PWSTR = windows.PWSTR;
-const WCHAR = windows.WCHAR;
-const HICON = windows.HICON;
-const HMENU = windows.HMENU;
-const HCURSOR = windows.HCURSOR;
-const HBRUSH = windows.HBRUSH;
-const LPCWSTR = windows.LPCWSTR;
-const DWORD = windows.DWORD;
-const ATOM = windows.ATOM;
-const BOOL = windows.BOOL;
-const POINT = windows.POINT;
-const HDC = windows.HDC;
-const RECT = windows.RECT;
-const BYTE = windows.BYTE;
+pub fn NewHWND(h_instance: windows.HINSTANCE) !windows.HWND {
+    const class_name_utf16 = std.unicode.utf8ToUtf16LeStringLiteral("ezel");
+    const class_name: windows.LPCWSTR = @ptrCast(class_name_utf16);
+    const window_title_utf16 = std.unicode.utf8ToUtf16LeStringLiteral("ezel");
+    const window_title: windows.LPCWSTR = @ptrCast(window_title_utf16);
+
+    var wc: WNDCLASSEXW = .{
+        .cbSize = @sizeOf(WNDCLASSEXW),
+        .lpfnWndProc = WindowProc,
+        .hInstance = h_instance,
+        .lpszClassName = class_name,
+    };
+
+    // TODO: treat return
+    _ = RegisterClassExW(&wc);
+
+    const hwnd = CreateWindowExW(
+        0,
+        class_name,
+        window_title,
+        WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT,
+        CW_USEDEFAULT,
+        CW_USEDEFAULT,
+        CW_USEDEFAULT,
+        null,
+        null,
+        h_instance,
+        null,
+    ) orelse {
+        // TODO: better error info?
+        return error.InitFailed;
+    };
+
+    return hwnd;
+}
+
+pub fn run(hwnd: windows.HWND) void {
+    _ = ShowWindow(hwnd, SW_SHOW);
+
+    var msg: MSG = undefined;
+    while (GetMessageW(&msg, null, 0, 0) > 0) {
+        _ = TranslateMessage(&msg);
+        _ = DispatchMessageW(&msg);
+    }
+}
+
+fn WindowProc(
+    hwnd: windows.HWND,
+    uMsg: windows.UINT,
+    wParam: windows.WPARAM,
+    lParam: windows.LPARAM,
+) callconv(.winapi) windows.LRESULT {
+    switch (uMsg) {
+        WM_PAINT => {
+            var rc: windows.RECT = undefined;
+            const success = GetClientRect(hwnd, &rc);
+            if (success == 0) return 1;
+
+            var ps: PAINTSTRUCT = .{};
+            const hdc = BeginPaint(hwnd, &ps);
+
+            const hbr: windows.HBRUSH = @as(windows.HBRUSH, @ptrFromInt(COLOR_WINDOW + 1));
+            _ = FillRect(hdc, &ps.rcPaint, hbr);
+
+            _ = EndPaint(hwnd, &ps);
+
+            return 0;
+        },
+        WM_DESTROY => {
+            PostQuitMessage(0);
+            return 0;
+        },
+        else => return DefWindowProcW(hwnd, uMsg, wParam, lParam),
+    }
+}
 
 const WNDPROC = *const fn (
-    HWND,
-    UINT,
-    WPARAM,
-    LPARAM,
-) callconv(.winapi) LRESULT;
+    windows.HWND,
+    windows.UINT,
+    windows.WPARAM,
+    windows.LPARAM,
+) callconv(.winapi) windows.LRESULT;
 
 const WNDCLASSEXW = extern struct {
-    cbSize: UINT = 0,
-    style: UINT = 0,
+    cbSize: windows.UINT = 0,
+    style: windows.UINT = 0,
     lpfnWndProc: WNDPROC,
     cbClsExtra: i32 = 0,
     cbWndExtra: i32 = 0,
-    hInstance: ?HINSTANCE = null,
-    hIcon: ?HICON = null,
-    hCursor: ?HCURSOR = null,
-    hbrBackground: ?HBRUSH = null,
-    lpszMenuName: ?LPCWSTR = null,
-    lpszClassName: ?LPCWSTR = null,
-    hIconSm: ?HICON = null,
+    hInstance: ?windows.HINSTANCE = null,
+    hIcon: ?windows.HICON = null,
+    hCursor: ?windows.HCURSOR = null,
+    hbrBackground: ?windows.HBRUSH = null,
+    lpszMenuName: ?windows.LPCWSTR = null,
+    lpszClassName: ?windows.LPCWSTR = null,
+    hIconSm: ?windows.HICON = null,
 };
 
 const MSG = extern struct {
-    hwnd: HWND,
-    message: UINT,
-    wParam: WPARAM,
-    lParam: LPARAM,
-    time: DWORD,
-    pt: POINT,
+    hwnd: windows.HWND,
+    message: windows.UINT,
+    wParam: windows.WPARAM,
+    lParam: windows.LPARAM,
+    time: windows.DWORD,
+    pt: windows.POINT,
 };
 
 const PAINTSTRUCT = extern struct {
-    hdc: ?HDC = null,
-    fErase: BOOL = 0,
-    rcPaint: RECT = .{
+    hdc: ?windows.HDC = null,
+    fErase: windows.BOOL = 0,
+    rcPaint: windows.RECT = .{
         .bottom = 0,
         .left = 0,
         .right = 0,
         .top = 0,
     },
-    fRestore: BOOL = 0,
-    fIncUpdate: BOOL = 0,
-    rgbReserved: [32]BYTE = std.mem.zeroes([32]BYTE),
+    fRestore: windows.BOOL = 0,
+    fIncUpdate: windows.BOOL = 0,
+    rgbReserved: [32]windows.BYTE = std.mem.zeroes([32]windows.BYTE),
 };
-
-extern "user32" fn DefWindowProcW(
-    hWnd: HWND,
-    Msg: UINT,
-    wParam: WPARAM,
-    lParam: LPARAM,
-) callconv(.winapi) LRESULT;
-extern "user32" fn PostQuitMessage(hExitCode: i32) callconv(.winapi) void;
-extern "user32" fn CreateWindowExW(
-    dwExStyle: DWORD,
-    lpClassName: ?LPCWSTR,
-    lpWindowName: ?LPCWSTR,
-    dwStyle: DWORD,
-    X: i32,
-    Y: i32,
-    nWidth: i32,
-    nHeight: i32,
-    hWndParent: ?HWND,
-    hMenu: ?HMENU,
-    hInstance: ?HINSTANCE,
-    lpParam: ?*anyopaque,
-) callconv(.winapi) ?HWND;
-extern "user32" fn RegisterClassExW(*const WNDCLASSEXW) callconv(.winapi) ATOM;
-extern "user32" fn ShowWindow(hWnd: HWND, nCmdShow: i32) callconv(.winapi) BOOL;
-extern "user32" fn GetMessageW(
-    lpMsg: *MSG,
-    hWnd: ?HWND,
-    wMsgFilterMin: UINT,
-    wMsgFilterMax: UINT,
-) callconv(.winapi) BOOL;
-extern "user32" fn TranslateMessage(lpMsg: *const MSG) callconv(.winapi) BOOL;
-extern "user32" fn DispatchMessageW(lpMsg: *const MSG) callconv(.winapi) LRESULT;
-extern "user32" fn BeginPaint(hWnd: HWND, lpPaint: *PAINTSTRUCT) callconv(.winapi) HDC;
-extern "user32" fn EndPaint(hWnd: HWND, lpPaint: *const PAINTSTRUCT) callconv(.winapi) BOOL;
-extern "user32" fn FillRect(
-    hDC: HDC,
-    lprc: *const RECT,
-    hbr: HBRUSH,
-) callconv(.winapi) i32;
-
 
 const WM_DESTROY = 0x2;
 const WM_LBUTTONDOWN = 0x0201;
@@ -132,74 +149,42 @@ const SW_SHOW = 0x5;
 
 const COLOR_WINDOW = 5;
 
-fn WindowProc(
-    hwnd: HWND,
-    uMsg: UINT,
-    wParam: WPARAM,
-    lParam: LPARAM,
-) callconv(.winapi) LRESULT {
-    switch (uMsg) {
-        WM_PAINT => {
-            var ps: PAINTSTRUCT = .{};
-            const hdc = BeginPaint(hwnd, &ps);
-
-            const hbr: HBRUSH = @as(HBRUSH, @ptrFromInt(COLOR_WINDOW + 1));
-            _ = FillRect(hdc, &ps.rcPaint, hbr);
-
-            _ = EndPaint(hwnd, &ps);
-
-            return 0;
-        },
-        WM_DESTROY => {
-            PostQuitMessage(0);
-            return 0;
-        },
-        else => return DefWindowProcW(hwnd, uMsg, wParam, lParam),
-    }
-}
-
-pub fn NewApplication() !HWND {
-    const h_module = windows.kernel32.GetModuleHandleW(null).?;
-    const h_instance: HINSTANCE = @ptrCast(h_module);
-
-    const class_name_utf16 = std.unicode.utf8ToUtf16LeStringLiteral("ezel");
-    const class_name: LPCWSTR = @ptrCast(class_name_utf16);
-    const window_title_utf16 = std.unicode.utf8ToUtf16LeStringLiteral("ezel");
-    const window_title: LPCWSTR = @ptrCast(window_title_utf16);
-
-    var wc: WNDCLASSEXW = .{
-        .cbSize = @sizeOf(WNDCLASSEXW),
-        .lpfnWndProc = WindowProc,
-        .hInstance = h_instance,
-        .lpszClassName = class_name,
-    };
-
-    _ = RegisterClassExW(&wc);
-
-    const hwnd = CreateWindowExW(
-        0,
-        class_name,
-        window_title,
-        WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT,
-        CW_USEDEFAULT,
-        CW_USEDEFAULT,
-        CW_USEDEFAULT,
-        null,
-        null,
-        h_instance,
-        null,
-    ) orelse return error.InitFailed;
-
-    return hwnd;
-}
-
-pub fn run(hwnd: HWND) void {
-    _ = ShowWindow(hwnd, SW_SHOW);
-
-    var msg: MSG = undefined;
-    while (GetMessageW(&msg, null, 0, 0) > 0) {
-        _ = TranslateMessage(&msg);
-        _ = DispatchMessageW(&msg);
-    }
-}
+extern "user32" fn DefWindowProcW(
+    hWnd: windows.HWND,
+    Msg: windows.UINT,
+    wParam: windows.WPARAM,
+    lParam: windows.LPARAM,
+) callconv(.winapi) windows.LRESULT;
+extern "user32" fn PostQuitMessage(hExitCode: i32) callconv(.winapi) void;
+extern "user32" fn CreateWindowExW(
+    dwExStyle: windows.DWORD,
+    lpClassName: ?windows.LPCWSTR,
+    lpWindowName: ?windows.LPCWSTR,
+    dwStyle: windows.DWORD,
+    X: i32,
+    Y: i32,
+    nWidth: i32,
+    nHeight: i32,
+    hWndParent: ?windows.HWND,
+    hMenu: ?windows.HMENU,
+    hInstance: ?windows.HINSTANCE,
+    lpParam: ?*anyopaque,
+) callconv(.winapi) ?windows.HWND;
+extern "user32" fn RegisterClassExW(*const WNDCLASSEXW) callconv(.winapi) windows.ATOM;
+extern "user32" fn ShowWindow(hWnd: windows.HWND, nCmdShow: i32) callconv(.winapi) windows.BOOL;
+extern "user32" fn GetMessageW(
+    lpMsg: *MSG,
+    hWnd: ?windows.HWND,
+    wMsgFilterMin: windows.UINT,
+    wMsgFilterMax: windows.UINT,
+) callconv(.winapi) windows.BOOL;
+extern "user32" fn TranslateMessage(lpMsg: *const MSG) callconv(.winapi) windows.BOOL;
+extern "user32" fn DispatchMessageW(lpMsg: *const MSG) callconv(.winapi) windows.LRESULT;
+extern "user32" fn BeginPaint(hWnd: windows.HWND, lpPaint: *PAINTSTRUCT) callconv(.winapi) windows.HDC;
+extern "user32" fn EndPaint(hWnd: windows.HWND, lpPaint: *const PAINTSTRUCT) callconv(.winapi) windows.BOOL;
+extern "user32" fn FillRect(
+    hDC: windows.HDC,
+    lprc: *const windows.RECT,
+    hbr: windows.HBRUSH,
+) callconv(.winapi) i32;
+extern "user32" fn GetClientRect(hWnd: windows.HWND, *windows.RECT) callconv(.winapi) windows.BOOL;
