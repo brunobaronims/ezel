@@ -5,15 +5,15 @@ const windows = @import("windows/root.zig");
 pub const Application = union(enum) {
     windows: windows.Application,
 
-    pub fn DrawRectangle(self: *Application) !void {
+    pub fn drawRectangle(self: *Application) !void {
         switch (self.*) {
-            inline else => |*app| app.DrawRectangle(),
+            inline else => |*app| app.drawRectangle(),
         }
     }
 
-    pub fn Release(self: *Application) void {
+    pub fn release(self: *Application) void {
         switch (self.*) {
-            inline else => |*app| app.Release(),
+            inline else => |*app| app.release(),
         }
     }
 

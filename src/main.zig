@@ -6,6 +6,7 @@ pub fn main() void {
         std.log.err("{}", .{err});
         return;
     };
+    defer app.release();
 
     app.run();
 }

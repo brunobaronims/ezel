@@ -2,7 +2,7 @@ const std = @import("std");
 const d2d1 = @import("d2d1.zig");
 const windows = @import("root.zig");
 
-pub fn NewHWND(h_instance: windows.HINSTANCE) !windows.HWND {
+pub fn NewHwnd(h_instance: windows.HINSTANCE) !windows.HWND {
     const class_name_utf16 = std.unicode.utf8ToUtf16LeStringLiteral("ezel");
     const class_name: windows.LPCWSTR = @ptrCast(class_name_utf16);
     const window_title_utf16 = std.unicode.utf8ToUtf16LeStringLiteral("ezel");
@@ -149,6 +149,8 @@ const SW_SHOW = 0x5;
 
 const COLOR_WINDOW = 5;
 
+pub const GWLP_USERDATA: windows.INT = -21;
+
 extern "user32" fn DefWindowProcW(
     hWnd: windows.HWND,
     Msg: windows.UINT,
@@ -187,4 +189,5 @@ extern "user32" fn FillRect(
     lprc: *const windows.RECT,
     hbr: windows.HBRUSH,
 ) callconv(.winapi) i32;
-extern "user32" fn GetClientRect(hWnd: windows.HWND, *windows.RECT) callconv(.winapi) windows.BOOL;
+extern "user32" fn GetClientRect(hWnd: windows.HWND, lpRect: *windows.RECT) callconv(.winapi) windows.BOOL;
+pub extern "user32" fn SetWindowLongPtrW(hWnd: windows.HWND, nIndex: windows.INT, dwNewLong: windows.LONG_PTR,) callconv(.winapi) windows.LONG_PTR;

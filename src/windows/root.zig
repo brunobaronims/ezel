@@ -39,19 +39,20 @@ pub const Color = UINT32;
 pub const PixelFormatGUID = GUID;
 pub const InProcPointer = [*]BYTE;
 pub const double = f64;
+pub const LONG_PTR = windows.LONG_PTR;
 
 pub const Application = struct {
     factory: *d2d1.IFactory,
     render_target: *d2d1.IHwndRenderTarget,
     hwnd: HWND,
 
-    pub fn DrawRectangle() !void {
+    pub fn drawRectangle() !void {
         return error.NotImplemented;
     }
 
-    pub fn Release(self: *Application) void {
-        self.factory.Release();
-        self.render_target.Release();
+    pub fn release(self: *Application) void {
+        _ = self.factory.Release();
+        _ = self.render_target.Release();
     }
 
     pub fn run(self: *Application) void {
@@ -65,16 +66,22 @@ pub fn NewApplication() !Application {
     };
     const h_instance: HINSTANCE = @ptrCast(h_module);
 
-    const hwnd = try user32.NewHWND(h_instance); 
+    const hwnd = try user32.NewHwnd(h_instance);
 
     const factory = try d2d1.NewFactory();
 
-    return Application{
+    const app: Application = .{
         .factory = factory,
         .hwnd = hwnd,
         // create render_target
         .render_target = undefined,
     };
+
+    // const result = user32.SetWindowLongPtrW(hwnd, user32.GWLP_USERDATA, @intCast(@intFromPtr(&app)));
+    // if (result == 0) {
+    //     // TODO: error
+    //     return error.InitFailed;
+    // }
+
+    return app;
 }
-
-
