@@ -61,13 +61,33 @@ fn WindowProc(
             const success = GetClientRect(hwnd, &rc);
             if (success == 0) return 1;
 
-            var ps: PAINTSTRUCT = .{};
-            const hdc = BeginPaint(hwnd, &ps);
+            const p = GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+            if (p == 0) {
+                var ps: PAINTSTRUCT = undefined;
+                _ = BeginPaint(hwnd, &ps);
+                _ = EndPaint(hwnd, &ps);
+                return 0;
+            }
 
-            const hbr: windows.HBRUSH = @as(windows.HBRUSH, @ptrFromInt(COLOR_WINDOW + 1));
-            _ = FillRect(hdc, &ps.rcPaint, hbr);
+            const app: *windows.Application = @ptrFromInt(@as(usize, @intCast(p)));
 
-            _ = EndPaint(hwnd, &ps);
+            const rectangle: d2d1.RECT_F = .{
+                .left = @as(f32, @floatFromInt(rc.left)) + 100.0,
+                .top = @as(f32, @floatFromInt(rc.top)) + 100.0,
+                .right = @as(f32, @floatFromInt(rc.right)) - 100.0,
+                .bottom = @as(f32, @floatFromInt(rc.bottom)) - 100.0,
+            };
+
+            app.render_target.BeginDraw();
+
+            app.render_target.DrawRectangle(
+                &rectangle,
+                @ptrCast(app.brushes[0]),
+                1.0,
+                null,
+                );
+
+            app.render_target.EndDraw();
 
             return 0;
         },
@@ -149,7 +169,7 @@ const SW_SHOW = 0x5;
 
 const COLOR_WINDOW = 5;
 
-pub const GWLP_USERDATA: windows.INT = -21;
+pub const GWLP_USERDATA: c_int = -21;
 
 extern "user32" fn DefWindowProcW(
     hWnd: windows.HWND,
@@ -182,12 +202,29 @@ extern "user32" fn GetMessageW(
 ) callconv(.winapi) windows.BOOL;
 extern "user32" fn TranslateMessage(lpMsg: *const MSG) callconv(.winapi) windows.BOOL;
 extern "user32" fn DispatchMessageW(lpMsg: *const MSG) callconv(.winapi) windows.LRESULT;
-extern "user32" fn BeginPaint(hWnd: windows.HWND, lpPaint: *PAINTSTRUCT) callconv(.winapi) windows.HDC;
-extern "user32" fn EndPaint(hWnd: windows.HWND, lpPaint: *const PAINTSTRUCT) callconv(.winapi) windows.BOOL;
+extern "user32" fn BeginPaint(
+    hWnd: windows.HWND,
+    lpPaint: *PAINTSTRUCT,
+) callconv(.winapi) windows.HDC;
+extern "user32" fn EndPaint(
+    hWnd: windows.HWND,
+    lpPaint: *const PAINTSTRUCT,
+) callconv(.winapi) windows.BOOL;
 extern "user32" fn FillRect(
     hDC: windows.HDC,
     lprc: *const windows.RECT,
     hbr: windows.HBRUSH,
 ) callconv(.winapi) i32;
-extern "user32" fn GetClientRect(hWnd: windows.HWND, lpRect: *windows.RECT) callconv(.winapi) windows.BOOL;
-pub extern "user32" fn SetWindowLongPtrW(hWnd: windows.HWND, nIndex: windows.INT, dwNewLong: windows.LONG_PTR,) callconv(.winapi) windows.LONG_PTR;
+pub extern "user32" fn GetClientRect(
+    hWnd: windows.HWND,
+    lpRect: *windows.RECT,
+) callconv(.winapi) windows.BOOL;
+pub extern "user32" fn SetWindowLongPtrW(
+    hWnd: windows.HWND,
+    nIndex: c_int,
+    dwNewLong: windows.LONG_PTR,
+) callconv(.winapi) windows.LONG_PTR;
+extern "user32" fn GetWindowLongPtrW(
+    hWnd: windows.HWND,
+    nIndex: c_int,
+) callconv(.winapi) windows.LONG_PTR;

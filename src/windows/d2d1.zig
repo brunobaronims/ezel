@@ -6,7 +6,6 @@ const windows = @import("root.zig");
 
 pub fn NewFactory() !*IFactory {
     var factory: *IFactory = undefined;
-
     const hr = D2D1CreateFactory(
         FACTORY_TYPE.SINGLE_THREADED,
         &IID_IFactory,
@@ -28,14 +27,14 @@ const IID_IFactory = windows.GUID{
     .Data4 = [8]u8{ 0x92, 0x45, 0x11, 0x8b, 0xfd, 0x3b, 0x60, 0x07 },
 };
 
-const RECT_F = extern struct {
+pub const RECT_F = extern struct {
     left: windows.FLOAT,
     top: windows.FLOAT,
     right: windows.FLOAT,
     bottom: windows.FLOAT,
 };
 
-const RECT_U = extern struct {
+pub const RECT_U = extern struct {
     left: windows.UINT32,
     top: windows.UINT32,
     right: windows.UINT32,
@@ -166,7 +165,7 @@ const BRUSH_PROPERTIES = extern struct {
     transform: MATRIX_3X2_F,
 };
 
-const COLOR_F = extern struct {
+pub const COLOR_F = extern struct {
     r: windows.FLOAT,
     g: windows.FLOAT,
     b: windows.FLOAT,
@@ -567,7 +566,7 @@ pub const IFactory = extern struct {
             *IFactory,
             *const RENDER_TARGET_PROPERTIES,
             *const HWND_RENDER_TARGET_PROPERTIES,
-            *?*IHwndRenderTarget,
+            **IHwndRenderTarget,
         ) callconv(.winapi) windows.HRESULT,
     };
 
@@ -585,12 +584,30 @@ pub const IFactory = extern struct {
     }
 
     pub fn CreateHwndRenderTarget(
-        _: *IFactory,
-        _: windows.HWND,
-        _: ?*const RENDER_TARGET_PROPERTIES,
-        _: ?*const HWND_RENDER_TARGET_PROPERTIES,
+        self: *IFactory,
+        hwnd: windows.HWND,
     ) !*IHwndRenderTarget {
-        return undefined;
+        var rc: windows.RECT = undefined;
+        const success = user32.GetClientRect(hwnd, &rc);
+        if (success == 0) return error.FailedToCreateRenderTarget;
+
+        const size: SIZE_U = .{
+            .width = @intCast(rc.right - rc.left),
+            .height = @intCast(rc.bottom - rc.top),
+        };
+
+        const render_target_properties: RENDER_TARGET_PROPERTIES = .{ .pixelFormat = .{} };
+        const hwnd_render_target_properties: HWND_RENDER_TARGET_PROPERTIES = .{
+            .hwnd = hwnd,
+            .pixelSize = size,
+        };
+        var render_target: *IHwndRenderTarget = undefined;
+        const hr = self.v.CreateHwndRenderTarget(self, &render_target_properties, &hwnd_render_target_properties, &render_target);
+        if (hr < 0) {
+            return error.FailedToCreateRenderTarget;
+        }
+
+        return render_target;
     }
 };
 
@@ -859,7 +876,7 @@ const IBitmapBrush = extern struct {
     }
 };
 
-const ISolidColorBrush = extern struct {
+pub const ISolidColorBrush = extern struct {
     v: *const VTable,
 
     const VTable = extern struct {
@@ -1473,6 +1490,39 @@ pub const IHwndRenderTarget = extern struct {
 
     pub fn Release(self: *IHwndRenderTarget) windows.ULONG {
         return self.v.Release(self);
+    }
+
+    pub fn CreateSolidColorBrush(
+        self: *IHwndRenderTarget,
+        color: *const COLOR_F,
+        brush_properties: ?*const BRUSH_PROPERTIES,
+    ) !*ISolidColorBrush {
+        var brush: *ISolidColorBrush = undefined;
+        const hr = self.v.CreateSolidColorBrush(self, color, brush_properties, &brush);
+        if (hr < 0) {
+            return error.FailedToCreateBrush;
+        }
+
+        return brush;
+    }
+
+    pub fn BeginDraw(self: *IHwndRenderTarget) void {
+        return self.v.BeginDraw(self);
+    }
+    
+    pub fn EndDraw(self: *IHwndRenderTarget) void {
+        _ = self.v.EndDraw(self, null, null);
+        return;
+    }
+
+    pub fn DrawRectangle(
+        self: *IHwndRenderTarget,
+        rect: *const RECT_F,
+        brush: *IBrush,
+        stroke_width: windows.FLOAT,
+        stroke_style: ?*IStrokeStyle,
+    ) void {
+        return self.v.DrawRectangle(self, rect, brush, stroke_width, stroke_style);
     }
 };
 

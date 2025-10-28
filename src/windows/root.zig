@@ -44,6 +44,7 @@ pub const LONG_PTR = windows.LONG_PTR;
 pub const Application = struct {
     factory: *d2d1.IFactory,
     render_target: *d2d1.IHwndRenderTarget,
+    brushes: [1]*d2d1.ISolidColorBrush,
     hwnd: HWND,
 
     pub fn drawRectangle() !void {
@@ -51,8 +52,11 @@ pub const Application = struct {
     }
 
     pub fn release(self: *Application) void {
-        _ = self.factory.Release();
         _ = self.render_target.Release();
+        for (self.brushes) |brush| {
+            _ = brush.Release();
+        }
+        _ = self.factory.Release();
     }
 
     pub fn run(self: *Application) void {
@@ -60,28 +64,36 @@ pub const Application = struct {
     }
 };
 
-pub fn NewApplication() !Application {
+pub fn NewApplication(allocator: std.mem.Allocator) !*Application {
+    const app = try allocator.create(Application);
+    errdefer allocator.destroy(app);
+
     const h_module = windows.kernel32.GetModuleHandleW(null) orelse {
         return error.InitFailed;
     };
     const h_instance: HINSTANCE = @ptrCast(h_module);
 
-    const hwnd = try user32.NewHwnd(h_instance);
+    app.hwnd = try user32.NewHwnd(h_instance);
 
-    const factory = try d2d1.NewFactory();
+    app.factory = try d2d1.NewFactory();
+    errdefer _ = app.factory.Release();
 
-    const app: Application = .{
-        .factory = factory,
-        .hwnd = hwnd,
-        // create render_target
-        .render_target = undefined,
-    };
+    app.render_target = try app.factory.CreateHwndRenderTarget(app.hwnd);
+    errdefer _ = app.render_target.Release();
 
-    // const result = user32.SetWindowLongPtrW(hwnd, user32.GWLP_USERDATA, @intCast(@intFromPtr(&app)));
-    // if (result == 0) {
-    //     // TODO: error
-    //     return error.InitFailed;
-    // }
+    const color = d2d1.COLOR_F{ .r = 150, .g = 100, .b = 75, .a = 1 };
+    app.brushes[0] = try app.render_target.CreateSolidColorBrush(
+        &color,
+        null,
+    );
+    errdefer _ = app.brushes[0].Release();
+
+    _ = windows.kernel32.SetLastError(.SUCCESS);
+    const result = user32.SetWindowLongPtrW(app.hwnd, user32.GWLP_USERDATA, @bitCast(@intFromPtr(app)));
+    if (result == 0 and windows.kernel32.GetLastError() != .SUCCESS) {
+        // TODO: error
+        return error.InitFailed;
+    }
 
     return app;
 }
