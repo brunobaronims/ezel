@@ -15,6 +15,7 @@ pub fn build(b: *std.Build) void {
 
     exe.linkSystemLibrary("user32");
     exe.linkSystemLibrary("d2d1");
+    exe.linkSystemLibrary("ole32");
 
     b.installArtifact(exe);
 

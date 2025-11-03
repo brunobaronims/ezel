@@ -27,6 +27,7 @@ pub const FLOAT = windows.FLOAT;
 pub const GUID = windows.GUID;
 pub const HRESULT = windows.HRESULT;
 pub const ULONG = windows.ULONG;
+pub const LONG = windows.LONG;
 pub const INT = windows.INT;
 pub const TAG = u64;
 pub const UINT32 = u32;
@@ -40,10 +41,18 @@ pub const PixelFormatGUID = GUID;
 pub const InProcPointer = [*]BYTE;
 pub const double = f64;
 pub const LONG_PTR = windows.LONG_PTR;
+pub const LPVOID = windows.LPVOID;
+
+const COINIT = enum(c_int) {
+    APARTMENTTHREADED = 0x2,
+    MULTITHREADED = 0x0,
+    DISABLE_OLE1DDE = 0x4,
+    SPEED_OVER_MEMORY = 0x8,
+};
 
 pub const Application = struct {
     factory: *d2d1.IFactory,
-    render_target: *d2d1.IHwndRenderTarget,
+    render_target: ?*d2d1.IHwndRenderTarget,
     brushes: [1]*d2d1.ISolidColorBrush,
     hwnd: HWND,
 
@@ -52,20 +61,30 @@ pub const Application = struct {
     }
 
     pub fn release(self: *Application) void {
-        _ = self.render_target.Release();
+        if (self.render_target != null) {
+            _ = self.render_target.?.Release();
+        }
         for (self.brushes) |brush| {
             _ = brush.Release();
         }
         _ = self.factory.Release();
+        CoUninitialize();
     }
 
     pub fn run(self: *Application) void {
-        user32.run(self.hwnd);
+        _ = self;
+        user32.run();
     }
 };
 
+// TODO: errors
 pub fn NewApplication(allocator: std.mem.Allocator) !*Application {
-    const app = try allocator.create(Application);
+    const hr = CoInitializeEx(null, COINIT.MULTITHREADED);
+    if (hr < 0) {
+        return error.InitFailed;
+    }
+
+    var app = try allocator.create(Application);
     errdefer allocator.destroy(app);
 
     const h_module = windows.kernel32.GetModuleHandleW(null) orelse {
@@ -73,27 +92,15 @@ pub fn NewApplication(allocator: std.mem.Allocator) !*Application {
     };
     const h_instance: HINSTANCE = @ptrCast(h_module);
 
-    app.hwnd = try user32.NewHwnd(h_instance);
-
     app.factory = try d2d1.NewFactory();
     errdefer _ = app.factory.Release();
 
-    app.render_target = try app.factory.CreateHwndRenderTarget(app.hwnd);
-    errdefer _ = app.render_target.Release();
-
-    const color = d2d1.COLOR_F{ .r = 150, .g = 100, .b = 75, .a = 1 };
-    app.brushes[0] = try app.render_target.CreateSolidColorBrush(
-        &color,
-        null,
-    );
-    errdefer _ = app.brushes[0].Release();
-
-    _ = windows.kernel32.SetLastError(.SUCCESS);
-    const result = user32.SetWindowLongPtrW(app.hwnd, user32.GWLP_USERDATA, @bitCast(@intFromPtr(app)));
-    if (result == 0 and windows.kernel32.GetLastError() != .SUCCESS) {
-        // TODO: error
-        return error.InitFailed;
-    }
+    app.hwnd = try user32.NewHwnd(h_instance, app);
 
     return app;
 }
+
+pub const SetLastError = windows.kernel32.SetLastError;
+pub const GetLastError = windows.kernel32.GetLastError;
+extern "ole32" fn CoInitializeEx(?LPVOID, COINIT) callconv(.winapi) HRESULT;
+extern "ole32" fn CoUninitialize() callconv(.winapi) void;

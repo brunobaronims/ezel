@@ -5,7 +5,7 @@ const wic = @import("wic.zig");
 const windows = @import("root.zig");
 
 pub fn NewFactory() !*IFactory {
-    var factory: *IFactory = undefined;
+    var factory: ?*IFactory = null;
     const hr = D2D1CreateFactory(
         FACTORY_TYPE.SINGLE_THREADED,
         &IID_IFactory,
@@ -17,7 +17,7 @@ pub fn NewFactory() !*IFactory {
         return error.FailedToCreateFactory;
     }
 
-    return factory;
+    return factory.?;
 }
 
 const IID_IFactory = windows.GUID{
@@ -566,7 +566,7 @@ pub const IFactory = extern struct {
             *IFactory,
             *const RENDER_TARGET_PROPERTIES,
             *const HWND_RENDER_TARGET_PROPERTIES,
-            **IHwndRenderTarget,
+            *?*IHwndRenderTarget,
         ) callconv(.winapi) windows.HRESULT,
     };
 
@@ -587,6 +587,7 @@ pub const IFactory = extern struct {
         self: *IFactory,
         hwnd: windows.HWND,
     ) !*IHwndRenderTarget {
+        _ = windows.SetLastError(.SUCCESS);
         var rc: windows.RECT = undefined;
         const success = user32.GetClientRect(hwnd, &rc);
         if (success == 0) return error.FailedToCreateRenderTarget;
@@ -601,13 +602,13 @@ pub const IFactory = extern struct {
             .hwnd = hwnd,
             .pixelSize = size,
         };
-        var render_target: *IHwndRenderTarget = undefined;
+        var render_target: ?*IHwndRenderTarget = null;
         const hr = self.v.CreateHwndRenderTarget(self, &render_target_properties, &hwnd_render_target_properties, &render_target);
         if (hr < 0) {
             return error.FailedToCreateRenderTarget;
         }
 
-        return render_target;
+        return render_target.?;
     }
 };
 
@@ -1243,7 +1244,7 @@ pub const IHwndRenderTarget = extern struct {
             *IHwndRenderTarget,
             *const COLOR_F,
             ?*const BRUSH_PROPERTIES,
-            **ISolidColorBrush,
+            *?*ISolidColorBrush,
         ) callconv(.winapi) windows.HRESULT,
         CreateGradientStopCollection: *const fn (
             *IHwndRenderTarget,
@@ -1497,19 +1498,19 @@ pub const IHwndRenderTarget = extern struct {
         color: *const COLOR_F,
         brush_properties: ?*const BRUSH_PROPERTIES,
     ) !*ISolidColorBrush {
-        var brush: *ISolidColorBrush = undefined;
+        var brush: ?*ISolidColorBrush = null;
         const hr = self.v.CreateSolidColorBrush(self, color, brush_properties, &brush);
         if (hr < 0) {
             return error.FailedToCreateBrush;
         }
 
-        return brush;
+        return brush.?;
     }
 
     pub fn BeginDraw(self: *IHwndRenderTarget) void {
         return self.v.BeginDraw(self);
     }
-    
+
     pub fn EndDraw(self: *IHwndRenderTarget) void {
         _ = self.v.EndDraw(self, null, null);
         return;
@@ -2645,5 +2646,5 @@ extern "d2d1" fn D2D1CreateFactory(
     factoryType: FACTORY_TYPE,
     riid: windows.REFIID,
     pFactoryOptions: ?*const FACTORY_OPTIONS,
-    ppIFactory: **IFactory,
+    ppIFactory: *?*IFactory,
 ) callconv(.winapi) windows.HRESULT;

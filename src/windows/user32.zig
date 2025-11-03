@@ -2,22 +2,29 @@ const std = @import("std");
 const d2d1 = @import("d2d1.zig");
 const windows = @import("root.zig");
 
-pub fn NewHwnd(h_instance: windows.HINSTANCE) !windows.HWND {
-    const class_name_utf16 = std.unicode.utf8ToUtf16LeStringLiteral("ezel");
-    const class_name: windows.LPCWSTR = @ptrCast(class_name_utf16);
-    const window_title_utf16 = std.unicode.utf8ToUtf16LeStringLiteral("ezel");
-    const window_title: windows.LPCWSTR = @ptrCast(window_title_utf16);
+pub fn NewHwnd(h_instance: windows.HINSTANCE, app: *windows.Application) !windows.HWND {
+    const class_name = std.unicode.utf8ToUtf16LeStringLiteral("ezel");
+    const window_title = std.unicode.utf8ToUtf16LeStringLiteral("ezel");
+    const cursor = std.unicode.utf8ToUtf16LeStringLiteral("IDC_ARROW");
 
     var wc: WNDCLASSEXW = .{
         .cbSize = @sizeOf(WNDCLASSEXW),
+        .style = CS_HREDRAW | CS_VREDRAW,
         .lpfnWndProc = WindowProc,
+        .cbWndExtra = @sizeOf(windows.LONG_PTR),
         .hInstance = h_instance,
         .lpszClassName = class_name,
+        .hCursor = LoadCursorW(null, cursor),
     };
 
     // TODO: treat return
-    _ = RegisterClassExW(&wc);
+    _ = windows.SetLastError(.SUCCESS);
+    if (RegisterClassExW(&wc) == 0) {
+        std.log.info("error while registering window class: {}", .{windows.GetLastError()});
+        return error.InitFailed;
+    }
 
+    _ = windows.SetLastError(.SUCCESS);
     const hwnd = CreateWindowExW(
         0,
         class_name,
@@ -30,18 +37,37 @@ pub fn NewHwnd(h_instance: windows.HINSTANCE) !windows.HWND {
         null,
         null,
         h_instance,
-        null,
+        app,
     ) orelse {
-        // TODO: better error info?
+        std.log.info("error while creating window: {}", .{windows.GetLastError()});
         return error.InitFailed;
     };
+
+    const dpi = GetDpiForWindow(hwnd);
+    const scaled_width = @ceil(1280.0 * @as(f32, @floatFromInt(dpi)) / 96.0);
+    const scaled_height = @ceil(1024.0 * @as(f32, @floatFromInt(dpi)) / 96.0);
+
+    _ = windows.SetLastError(.SUCCESS);
+    if (SetWindowPos(
+        hwnd,
+        null,
+        0,
+        0,
+        @intFromFloat(scaled_width),
+        @intFromFloat(scaled_height),
+        SWP_NOMOVE,
+    ) == 0) {
+        std.log.info("error while setting window position: {}", .{windows.GetLastError()});
+        return error.InitFailed;
+    }
+
+    _ = ShowWindow(hwnd, SW_SHOWNORMAL);
+    _ = UpdateWindow(hwnd);
 
     return hwnd;
 }
 
-pub fn run(hwnd: windows.HWND) void {
-    _ = ShowWindow(hwnd, SW_SHOW);
-
+pub fn run() void {
     var msg: MSG = undefined;
     while (GetMessageW(&msg, null, 0, 0) > 0) {
         _ = TranslateMessage(&msg);
@@ -55,45 +81,48 @@ fn WindowProc(
     wParam: windows.WPARAM,
     lParam: windows.LPARAM,
 ) callconv(.winapi) windows.LRESULT {
+    if (uMsg == WM_CREATE) {
+        const pcs: *CREATESTRUCTW = @ptrFromInt(@as(usize, @bitCast(lParam)));
+        const app: *windows.Application = @ptrCast(@alignCast(pcs.lpCreateParams));
+
+        _ = windows.SetLastError(.SUCCESS);
+        const result = SetWindowLongPtrW(hwnd, GWLP_USERDATA, @bitCast(@intFromPtr(app)));
+        if (result == 0 and windows.GetLastError() != .SUCCESS) {
+            // TODO: error
+            return -1;
+        }
+
+        return 1;
+    }
+
+    const p = GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+    const app: ?*windows.Application = if (p != 0)
+        @ptrFromInt(@as(usize, @intCast(p)))
+    else
+        null;
+
     switch (uMsg) {
         WM_PAINT => {
-            var rc: windows.RECT = undefined;
-            const success = GetClientRect(hwnd, &rc);
-            if (success == 0) return 1;
-
-            const p = GetWindowLongPtrW(hwnd, GWLP_USERDATA);
-            if (p == 0) {
-                var ps: PAINTSTRUCT = undefined;
-                _ = BeginPaint(hwnd, &ps);
-                _ = EndPaint(hwnd, &ps);
-                return 0;
-            }
-
-            const app: *windows.Application = @ptrFromInt(@as(usize, @intCast(p)));
-
-            const rectangle: d2d1.RECT_F = .{
-                .left = @as(f32, @floatFromInt(rc.left)) + 100.0,
-                .top = @as(f32, @floatFromInt(rc.top)) + 100.0,
-                .right = @as(f32, @floatFromInt(rc.right)) - 100.0,
-                .bottom = @as(f32, @floatFromInt(rc.bottom)) - 100.0,
+            const a = app.?;
+            a.render_target = a.factory.CreateHwndRenderTarget(hwnd) catch {
+                return 1;
             };
+            errdefer _ = a.render_target.Release();
 
-            app.render_target.BeginDraw();
-
-            app.render_target.DrawRectangle(
-                &rectangle,
-                @ptrCast(app.brushes[0]),
-                1.0,
+            const color = d2d1.COLOR_F{ .r = 150, .g = 100, .b = 75, .a = 1 };
+            a.brushes[0] = a.render_target.?.CreateSolidColorBrush(
+                &color,
                 null,
-                );
-
-            app.render_target.EndDraw();
+            ) catch {
+                return 1;
+            };
+            errdefer _ = a.brushes[0].Release();
 
             return 0;
         },
         WM_DESTROY => {
             PostQuitMessage(0);
-            return 0;
+            return 1;
         },
         else => return DefWindowProcW(hwnd, uMsg, wParam, lParam),
     }
@@ -119,6 +148,21 @@ const WNDCLASSEXW = extern struct {
     lpszMenuName: ?windows.LPCWSTR = null,
     lpszClassName: ?windows.LPCWSTR = null,
     hIconSm: ?windows.HICON = null,
+};
+
+const CREATESTRUCTW = extern struct {
+    lpCreateParams: windows.LPVOID,
+    hInstance: windows.HINSTANCE,
+    hMenu: windows.HMENU,
+    hWndParent: windows.HWND,
+    cy: windows.INT,
+    cx: windows.INT,
+    y: windows.INT,
+    x: windows.INT,
+    style: windows.LONG,
+    lpszName: windows.LPCWSTR,
+    lpszClass: windows.LPCWSTR,
+    dwExStyle: windows.DWORD,
 };
 
 const MSG = extern struct {
@@ -147,6 +191,9 @@ const PAINTSTRUCT = extern struct {
 const WM_DESTROY = 0x2;
 const WM_LBUTTONDOWN = 0x0201;
 const WM_PAINT = 0x000F;
+const WM_SIZE = 0x5;
+const WM_CREATE = 0x1;
+const WM_DISPLAYCHANGE = 0x007E;
 
 const WS_OVERLAPPED = 0;
 const WS_CAPTION = 0x00C00000;
@@ -163,9 +210,14 @@ const WS_OVERLAPPEDWINDOW =
     WS_MAXIMIZEBOX;
 
 const CW_USEDEFAULT: c_int = -2147483648;
+const CS_HREDRAW: c_int = 0x2;
+const CS_VREDRAW: c_int = 0x1;
 
-const SW_HIDE = 0x1;
-const SW_SHOW = 0x5;
+const SW_HIDE = 0;
+const SW_SHOWNORMAL = 1;
+const SW_SHOW = 5;
+
+const SWP_NOMOVE = 0x2;
 
 const COLOR_WINDOW = 5;
 
@@ -193,7 +245,11 @@ extern "user32" fn CreateWindowExW(
     lpParam: ?*anyopaque,
 ) callconv(.winapi) ?windows.HWND;
 extern "user32" fn RegisterClassExW(*const WNDCLASSEXW) callconv(.winapi) windows.ATOM;
-extern "user32" fn ShowWindow(hWnd: windows.HWND, nCmdShow: i32) callconv(.winapi) windows.BOOL;
+extern "user32" fn ShowWindow(
+    hWnd: windows.HWND,
+    nCmdShow: i32,
+) callconv(.winapi) windows.BOOL;
+extern "user32" fn UpdateWindow(hWnd: windows.HWND) callconv(.winapi) windows.BOOL;
 extern "user32" fn GetMessageW(
     lpMsg: *MSG,
     hWnd: ?windows.HWND,
@@ -228,3 +284,21 @@ extern "user32" fn GetWindowLongPtrW(
     hWnd: windows.HWND,
     nIndex: c_int,
 ) callconv(.winapi) windows.LONG_PTR;
+extern "user32" fn LoadCursorW(
+    hInstance: ?windows.HINSTANCE,
+    lpCursorname: windows.LPCWSTR,
+) callconv(.winapi) windows.HCURSOR;
+extern "user32" fn GetDpiForWindow(hwnd: windows.HWND) callconv(.winapi) windows.UINT;
+extern "user32" fn SetWindowPos(
+    hWnd: windows.HWND,
+    hWndInsertAfter: ?windows.HWND,
+    X: windows.INT,
+    Y: windows.INT,
+    cx: windows.INT,
+    cy: windows.INT,
+    uFlags: windows.UINT,
+) callconv(.winapi) windows.BOOL;
+extern "user32" fn ValidateRect(
+    hWnd: windows.HWND,
+    lpRect: *const windows.RECT,
+) callconv(.winapi) windows.BOOL;
