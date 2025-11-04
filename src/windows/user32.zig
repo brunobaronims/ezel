@@ -20,7 +20,7 @@ pub fn NewHwnd(h_instance: windows.HINSTANCE, app: *windows.Application) !window
     // TODO: treat return
     _ = windows.SetLastError(.SUCCESS);
     if (RegisterClassExW(&wc) == 0) {
-        std.log.info("error while registering window class: {}", .{windows.GetLastError()});
+        std.log.err("error while registering window class: {}", .{windows.GetLastError()});
         return error.InitFailed;
     }
 
@@ -39,7 +39,7 @@ pub fn NewHwnd(h_instance: windows.HINSTANCE, app: *windows.Application) !window
         h_instance,
         app,
     ) orelse {
-        std.log.info("error while creating window: {}", .{windows.GetLastError()});
+        std.log.err("error while creating window: {}", .{windows.GetLastError()});
         return error.InitFailed;
     };
 
@@ -57,7 +57,7 @@ pub fn NewHwnd(h_instance: windows.HINSTANCE, app: *windows.Application) !window
         @intFromFloat(scaled_height),
         SWP_NOMOVE,
     ) == 0) {
-        std.log.info("error while setting window position: {}", .{windows.GetLastError()});
+        std.log.err("error while setting window position: {}", .{windows.GetLastError()});
         return error.InitFailed;
     }
 
@@ -101,31 +101,106 @@ fn WindowProc(
     else
         null;
 
-    switch (uMsg) {
-        WM_PAINT => {
-            const a = app.?;
-            a.render_target = a.factory.CreateHwndRenderTarget(hwnd) catch {
-                return 1;
-            };
-            errdefer _ = a.render_target.Release();
+    var was_handled = false;
 
-            const color = d2d1.COLOR_F{ .r = 150, .g = 100, .b = 75, .a = 1 };
-            a.brushes[0] = a.render_target.?.CreateSolidColorBrush(
-                &color,
-                null,
-            ) catch {
-                return 1;
-            };
-            errdefer _ = a.brushes[0].Release();
+    if (app) |a| {
+        switch (uMsg) {
+            WM_PAINT => {
+                if (a.render_target == null) {
+                    a.render_target = a.factory.CreateHwndRenderTarget(hwnd) catch {
+                        return 1;
+                    };
+                    errdefer _ = a.render_target.?.Release();
 
-            return 0;
-        },
-        WM_DESTROY => {
-            PostQuitMessage(0);
-            return 1;
-        },
-        else => return DefWindowProcW(hwnd, uMsg, wParam, lParam),
+                    const color = d2d1.COLOR_F{ .r = 150, .g = 100, .b = 75, .a = 1 };
+                    a.brushes[0] = a.render_target.?.CreateSolidColorBrush(
+                        &color,
+                        null,
+                    ) catch {
+                        return 1;
+                    };
+                    errdefer _ = a.brushes[0].Release();
+                }
+
+                const rt = a.render_target.?;
+
+                const identity_matrix = d2d1.MATRIX_3X2_F{
+                    .DUMMYSTRUCTNAME2 = .{
+                        ._11 = 1.0,
+                        ._12 = 0.0,
+                        ._21 = 0.0,
+                        ._22 = 1.0,
+                        ._31 = 0.0,
+                        ._32 = 0.0,
+                    },
+                };
+                const white = d2d1.COLOR_F{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 };
+
+                rt.BeginDraw();
+
+                rt.SetTransform(&identity_matrix);
+                rt.Clear(&white);
+
+                const rt_size = rt.GetSize();
+                std.log.info("height: {d}, width: {d}", .{rt_size.height, rt_size.width});
+                const button = d2d1.RECT_F{
+                    .left = (rt_size.width / 2) - 100.0,
+                    .bottom = (rt_size.height / 2) - 100.0,
+                    .right = (rt_size.width / 2) + 100.0,
+                    .top = (rt_size.height / 2) + 100.0,
+                };
+
+                const brush = a.brushes[0].?;
+
+                rt.FillRectangle(&button, @ptrCast(brush));
+
+                const hr = rt.EndDraw();
+                if (hr == d2d1.ERR_RECREATE_TARGET) {
+                    a.brushes[0].?.Release();
+                    rt.Release();
+                }
+
+                _ = ValidateRect(hwnd, null);
+
+                was_handled = true;
+                return 0;
+            },
+            WM_SIZE => {
+                if (a.render_target) |rt| {
+                    const width: u32 = @intCast(lParam & 0xFFFF);
+                    const height: u32 = @intCast((lParam >> 16) & 0xFFFF);
+
+                    const size = d2d1.SIZE_U{
+                        .width = width,
+                        .height = height,
+                    };
+
+                    _ = rt.Resize(&size);
+                } 
+
+                was_handled = true;
+                return 0;
+            },
+            WM_DISPLAYCHANGE => {
+                _ = InvalidateRect(hwnd, null, 0);
+
+                was_handled = true;
+                return 0;
+            },
+            WM_DESTROY => {
+                PostQuitMessage(0);
+                was_handled = true;
+                return 1;
+            },
+            else => {},
+        }
     }
+
+    if (!was_handled) {
+        return DefWindowProcW(hwnd, uMsg, wParam, lParam);
+    }
+
+    return 0;
 }
 
 const WNDPROC = *const fn (
@@ -300,5 +375,10 @@ extern "user32" fn SetWindowPos(
 ) callconv(.winapi) windows.BOOL;
 extern "user32" fn ValidateRect(
     hWnd: windows.HWND,
-    lpRect: *const windows.RECT,
+    lpRect: ?*const windows.RECT,
+) callconv(.winapi) windows.BOOL;
+extern "user32" fn InvalidateRect(
+    hWnd: windows.HWND,
+    lpRect: ?*const windows.RECT,
+    bErase: windows.BOOL,
 ) callconv(.winapi) windows.BOOL;

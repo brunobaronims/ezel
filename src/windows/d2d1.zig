@@ -51,7 +51,7 @@ const POINT_2F = extern struct { x: windows.FLOAT, y: windows.FLOAT };
 
 const POINT_2U = extern struct { x: windows.UINT32, y: windows.UINT32 };
 
-const MATRIX_3X2_F = extern union {
+pub const MATRIX_3X2_F = extern union {
     DUMMYSTRUCTNAME: extern struct {
         m11: windows.FLOAT,
         m12: windows.FLOAT,
@@ -91,7 +91,7 @@ const SIZE_F = extern struct {
     height: windows.FLOAT,
 };
 
-const SIZE_U = extern struct {
+pub const SIZE_U = extern struct {
     width: windows.UINT32 = 0,
     height: windows.UINT32 = 0,
 };
@@ -198,6 +198,8 @@ const LAYER_PARAMETERS = extern struct {
     opacityBrush: *IBrush,
     layerOptions: LAYER_OPTIONS,
 };
+
+pub const ERR_RECREATE_TARGET = 0x8899000C;
 
 const FACTORY_TYPE = enum(c_int) {
     SINGLE_THREADED = 0,
@@ -1507,13 +1509,32 @@ pub const IHwndRenderTarget = extern struct {
         return brush.?;
     }
 
+    pub fn Resize(self: *IHwndRenderTarget, size: *const SIZE_U) windows.HRESULT {
+        return self.v.Resize(self, size);
+    }
+
     pub fn BeginDraw(self: *IHwndRenderTarget) void {
         return self.v.BeginDraw(self);
     }
 
-    pub fn EndDraw(self: *IHwndRenderTarget) void {
-        _ = self.v.EndDraw(self, null, null);
-        return;
+    pub fn EndDraw(self: *IHwndRenderTarget) windows.HRESULT {
+        return self.v.EndDraw(self, null, null);
+    }
+
+    pub fn SetTransform(self: *IHwndRenderTarget, transform: *const MATRIX_3X2_F) void {
+        return self.v.SetTransform(self, transform);
+    }
+
+    pub fn Clear(self: *IHwndRenderTarget, color: ?*const COLOR_F) void {
+        return self.v.Clear(self, color);
+    }
+
+    pub fn FillRectangle(self: *IHwndRenderTarget, area: *const RECT_F, brush: *IBrush) void {
+        return self.v.FillRectangle(self, area, brush);
+    }
+
+    pub fn GetSize(self: *IHwndRenderTarget) SIZE_F {
+        return self.v.GetSize(self);
     }
 
     pub fn DrawRectangle(

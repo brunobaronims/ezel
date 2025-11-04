@@ -53,7 +53,7 @@ const COINIT = enum(c_int) {
 pub const Application = struct {
     factory: *d2d1.IFactory,
     render_target: ?*d2d1.IHwndRenderTarget,
-    brushes: [1]*d2d1.ISolidColorBrush,
+    brushes: [1]?*d2d1.ISolidColorBrush,
     hwnd: HWND,
 
     pub fn drawRectangle() !void {
@@ -65,7 +65,7 @@ pub const Application = struct {
             _ = self.render_target.?.Release();
         }
         for (self.brushes) |brush| {
-            _ = brush.Release();
+            _ = brush.?.Release();
         }
         _ = self.factory.Release();
         CoUninitialize();
@@ -86,6 +86,13 @@ pub fn NewApplication(allocator: std.mem.Allocator) !*Application {
 
     var app = try allocator.create(Application);
     errdefer allocator.destroy(app);
+
+    app.* = .{
+        .factory = undefined,
+        .render_target = null,
+        .brushes = [_]?*d2d1.ISolidColorBrush{null},
+        .hwnd = undefined,
+    };
 
     const h_module = windows.kernel32.GetModuleHandleW(null) orelse {
         return error.InitFailed;
