@@ -1537,6 +1537,14 @@ pub const IHwndRenderTarget = extern struct {
         return self.v.GetSize(self);
     }
 
+    pub fn GetDpi(self: *IHwndRenderTarget, dpiX: *windows.FLOAT, dpiY: *windows.FLOAT,) void {
+        return self.v.GetDpi(self, dpiX, dpiY);
+    }
+
+    pub fn GetPixelSize(self: *IHwndRenderTarget) SIZE_U {
+        return self.v.GetPixelSize(self);
+    }
+
     pub fn DrawRectangle(
         self: *IHwndRenderTarget,
         rect: *const RECT_F,

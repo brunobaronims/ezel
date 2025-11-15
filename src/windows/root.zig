@@ -55,6 +55,8 @@ pub const Application = struct {
     render_target: ?*d2d1.IHwndRenderTarget,
     brushes: [1]?*d2d1.ISolidColorBrush,
     hwnd: HWND,
+    dpiX: FLOAT = 0,
+    dpiY: FLOAT = 0,
 
     pub fn drawRectangle() !void {
         return error.NotImplemented;

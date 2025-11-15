@@ -5,7 +5,7 @@ const windows = @import("root.zig");
 pub fn NewHwnd(h_instance: windows.HINSTANCE, app: *windows.Application) !windows.HWND {
     const class_name = std.unicode.utf8ToUtf16LeStringLiteral("ezel");
     const window_title = std.unicode.utf8ToUtf16LeStringLiteral("ezel");
-    const cursor = std.unicode.utf8ToUtf16LeStringLiteral("IDC_ARROW");
+    const cursor = @as(windows.LPCWSTR, @ptrFromInt(32512));
 
     var wc: WNDCLASSEXW = .{
         .cbSize = @sizeOf(WNDCLASSEXW),
@@ -61,7 +61,7 @@ pub fn NewHwnd(h_instance: windows.HINSTANCE, app: *windows.Application) !window
         return error.InitFailed;
     }
 
-    _ = ShowWindow(hwnd, SW_SHOWNORMAL);
+    _ = ShowWindow(hwnd, SW_SHOWMAXIMIZED);
     _ = UpdateWindow(hwnd);
 
     return hwnd;
@@ -112,7 +112,9 @@ fn WindowProc(
                     };
                     errdefer _ = a.render_target.?.Release();
 
-                    const color = d2d1.COLOR_F{ .r = 150, .g = 100, .b = 75, .a = 1 };
+                    a.render_target.?.GetDpi(&a.dpiX, &a.dpiY);
+
+                    const color = d2d1.COLOR_F{ .r = 0, .g = 0, .b = 0, .a = 1 };
                     a.brushes[0] = a.render_target.?.CreateSolidColorBrush(
                         &color,
                         null,
@@ -134,20 +136,26 @@ fn WindowProc(
                         ._32 = 0.0,
                     },
                 };
-                const white = d2d1.COLOR_F{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 };
+                const white = d2d1.COLOR_F{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 };
 
                 rt.BeginDraw();
 
                 rt.SetTransform(&identity_matrix);
                 rt.Clear(&white);
 
-                const rt_size = rt.GetSize();
-                std.log.info("height: {d}, width: {d}", .{rt_size.height, rt_size.width});
+                var rc: windows.RECT = undefined;
+                if (GetClientRect(hwnd, &rc) == 0) {
+                    std.log.err("GetClientRect failed: {}", .{windows.GetLastError()});
+                    return 1;
+                }
+                const width_dip = @as(f32, @floatFromInt(rc.right - rc.left)) * (96.0 / a.dpiX);
+                const height_dip = @as(f32, @floatFromInt(rc.bottom - rc.top)) * (96.0 / a.dpiY);
+
                 const button = d2d1.RECT_F{
-                    .left = (rt_size.width / 2) - 100.0,
-                    .bottom = (rt_size.height / 2) - 100.0,
-                    .right = (rt_size.width / 2) + 100.0,
-                    .top = (rt_size.height / 2) + 100.0,
+                    .left = (width_dip * 0.5) - 100.0,
+                    .top = (height_dip * 0.5) - 100.0,
+                    .right = (width_dip * 0.5) + 100.0,
+                    .bottom = (height_dip * 0.5) + 100.0,
                 };
 
                 const brush = a.brushes[0].?;
@@ -176,7 +184,7 @@ fn WindowProc(
                     };
 
                     _ = rt.Resize(&size);
-                } 
+                }
 
                 was_handled = true;
                 return 0;
@@ -290,6 +298,8 @@ const CS_VREDRAW: c_int = 0x1;
 
 const SW_HIDE = 0;
 const SW_SHOWNORMAL = 1;
+const SW_SHOWMINIMIZED = 2;
+const SW_SHOWMAXIMIZED = 3;
 const SW_SHOW = 5;
 
 const SWP_NOMOVE = 0x2;
