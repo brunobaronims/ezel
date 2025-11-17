@@ -13,6 +13,13 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    const vulkan = b.dependency("vulkan_zig", .{
+        .registry = b.path("../../../../../mnt/c/VulkanSDK/1.4.328.1/share/vulkan/registry/vk.xml"),
+    }).module("vulkan-zig");
+
+    exe.root_module.addImport("vulkan", vulkan);
+
+    exe.addLibraryPath(.{ .cwd_relative = "/mnt/c/VulkanSDK/1.4.328.1/Lib" });
     exe.linkSystemLibrary("user32");
     exe.linkSystemLibrary("d2d1");
     exe.linkSystemLibrary("ole32");
