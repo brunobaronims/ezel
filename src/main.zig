@@ -11,12 +11,11 @@ pub fn main() void {
     }
     const allocator = gpa.allocator();
 
-    var app = ezel.NewApplication(allocator) catch |err| {
+    var app = ezel.Application.init(allocator) catch |err| {
         std.log.err("{}", .{err});
         return;
     };
-    defer app.deinit(allocator);
-    defer app.release();
+    defer app.release(allocator);
 
     app.run();
 }

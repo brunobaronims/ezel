@@ -2,7 +2,7 @@ const std = @import("std");
 const d2d1 = @import("d2d1.zig");
 const windows = @import("root.zig");
 
-pub fn NewHwnd(h_instance: windows.HINSTANCE, app: *windows.Application) !windows.HWND {
+pub fn NewHwnd(h_instance: windows.HINSTANCE, window: *windows.Window) !windows.HWND {
     const class_name = std.unicode.utf8ToUtf16LeStringLiteral("ezel");
     const window_title = std.unicode.utf8ToUtf16LeStringLiteral("ezel");
     const cursor = @as(windows.LPCWSTR, @ptrFromInt(32512));
@@ -37,7 +37,7 @@ pub fn NewHwnd(h_instance: windows.HINSTANCE, app: *windows.Application) !window
         null,
         null,
         h_instance,
-        app,
+        window,
     ) orelse {
         std.log.err("error while creating window: {}", .{windows.GetLastError()});
         return error.InitFailed;
@@ -83,10 +83,10 @@ fn WindowProc(
 ) callconv(.winapi) windows.LRESULT {
     if (uMsg == WM_CREATE) {
         const pcs: *CREATESTRUCTW = @ptrFromInt(@as(usize, @bitCast(lParam)));
-        const app: *windows.Application = @ptrCast(@alignCast(pcs.lpCreateParams));
+        const window: *windows.Window = @ptrCast(@alignCast(pcs.lpCreateParams));
 
         _ = windows.SetLastError(.SUCCESS);
-        const result = SetWindowLongPtrW(hwnd, GWLP_USERDATA, @bitCast(@intFromPtr(app)));
+        const result = SetWindowLongPtrW(hwnd, GWLP_USERDATA, @bitCast(@intFromPtr(window)));
         if (result == 0 and windows.GetLastError() != .SUCCESS) {
             // TODO: error
             return -1;
@@ -96,14 +96,14 @@ fn WindowProc(
     }
 
     const p = GetWindowLongPtrW(hwnd, GWLP_USERDATA);
-    const app: ?*windows.Application = if (p != 0)
+    const window: ?*windows.Window = if (p != 0)
         @ptrFromInt(@as(usize, @intCast(p)))
     else
         null;
 
     var was_handled = false;
 
-    if (app) |a| {
+    if (window) |a| {
         switch (uMsg) {
             WM_PAINT => {
                 if (a.render_target == null) {

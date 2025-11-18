@@ -19,7 +19,7 @@ pub fn build(b: *std.Build) void {
 
     exe.root_module.addImport("vulkan", vulkan);
 
-    exe.addLibraryPath(.{ .cwd_relative = "/mnt/c/VulkanSDK/1.4.328.1/Lib" });
+    exe.addLibraryPath(.{ .cwd_relative = "lib" });
     exe.linkSystemLibrary("user32");
     exe.linkSystemLibrary("d2d1");
     exe.linkSystemLibrary("ole32");

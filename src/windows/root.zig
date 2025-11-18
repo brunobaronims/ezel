@@ -50,7 +50,7 @@ const COINIT = enum(c_int) {
     SPEED_OVER_MEMORY = 0x8,
 };
 
-pub const Application = struct {
+pub const Window = struct {
     factory: *d2d1.IFactory,
     render_target: ?*d2d1.IHwndRenderTarget,
     brushes: [1]?*d2d1.ISolidColorBrush,
@@ -62,7 +62,7 @@ pub const Application = struct {
         return error.NotImplemented;
     }
 
-    pub fn release(self: *Application) void {
+    pub fn release(self: *Window) void {
         if (self.render_target != null) {
             _ = self.render_target.?.Release();
         }
@@ -73,20 +73,20 @@ pub const Application = struct {
         CoUninitialize();
     }
 
-    pub fn run(self: *Application) void {
+    pub fn run(self: *Window) void {
         _ = self;
         user32.run();
     }
 };
 
 // TODO: errors
-pub fn NewApplication(allocator: std.mem.Allocator) !*Application {
+pub fn NewWindow(allocator: std.mem.Allocator) !*Window {
     const hr = CoInitializeEx(null, COINIT.MULTITHREADED);
     if (hr < 0) {
         return error.InitFailed;
     }
 
-    var app = try allocator.create(Application);
+    var app = try allocator.create(Window);
     errdefer allocator.destroy(app);
 
     app.* = .{

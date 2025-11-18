@@ -1,40 +1,45 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const windows = @import("windows/root.zig");
+const vk = @import("vulkan/root.zig");
 
-pub const Application = union(enum) {
-    windows: *windows.Application,
+pub const Window = union(enum) {
+    windows: *windows.Window,
 
-    pub fn drawRectangle(self: *Application) !void {
-        switch (self.*) {
-            inline else => |app| app.drawRectangle(),
-        }
-    }
-
-    pub fn release(self: *Application) void {
-        switch (self.*) {
-            inline else => |app| app.release(),
-        }
-    }
-
-    pub fn run(self: *Application) void {
+    pub fn run(self: *Window) void {
         switch (self.*) {
             inline else => |app| app.run(),
         }
     }
 
-    pub fn deinit(self: *Application, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *Window, allocator: std.mem.Allocator) void {
         switch (self.*) {
             inline else => |app| allocator.destroy(app),
         }
     }
 };
 
-pub fn NewApplication(allocator: std.mem.Allocator) !Application {
-    switch (builtin.target.os.tag) {
-        .windows => {
-            return Application{ .windows = try windows.NewApplication(allocator) };
-        },
-        else => @compileError("Unsupported OS"),
+pub const Application = struct {
+    platform: Window,
+    vk: vk.Api,
+
+    pub fn init(allocator: std.mem.Allocator) !Application {
+        var vk_api = try vk.Api.init(allocator);
+        errdefer vk_api.deinit();
+
+        const platform = Window{
+            .windows = try windows.NewWindow(allocator),
+        };
+
+        return .{ .platform = platform, .vk = vk_api };
     }
-}
+
+    pub fn run(self: *Application) void {
+        self.platform.run();
+    }
+
+    pub fn release(self: *Application, allocator: std.mem.Allocator) void {
+        self.vk.deinit();
+        self.platform.deinit(allocator);
+    }
+};
