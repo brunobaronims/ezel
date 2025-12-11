@@ -1,30 +1,30 @@
 const std = @import("std");
-const d2d1 = @import("d2d1.zig");
-const windows = @import("root.zig");
+const windows = std.os.windows;
+const platform = @import("root.zig");
 
-pub fn NewHwnd(h_instance: windows.HINSTANCE, window: *windows.Window) !windows.HWND {
+pub fn NewHwnd(h_instance: HINSTANCE, window: *platform.Window) !HWND {
     const class_name = std.unicode.utf8ToUtf16LeStringLiteral("ezel");
     const window_title = std.unicode.utf8ToUtf16LeStringLiteral("ezel");
-    const cursor = @as(windows.LPCWSTR, @ptrFromInt(32512));
+    const cursor = @as(LPCWSTR, @ptrFromInt(32512));
 
     var wc: WNDCLASSEXW = .{
         .cbSize = @sizeOf(WNDCLASSEXW),
         .style = CS_HREDRAW | CS_VREDRAW,
         .lpfnWndProc = WindowProc,
-        .cbWndExtra = @sizeOf(windows.LONG_PTR),
+        .cbWndExtra = @sizeOf(LONG_PTR),
         .hInstance = h_instance,
         .lpszClassName = class_name,
         .hCursor = LoadCursorW(null, cursor),
     };
 
     // TODO: treat return
-    _ = windows.SetLastError(.SUCCESS);
+    _ = SetLastError(.SUCCESS);
     if (RegisterClassExW(&wc) == 0) {
-        std.log.err("error while registering window class: {}", .{windows.GetLastError()});
+        std.log.err("error while registering window class: {}", .{GetLastError()});
         return error.InitFailed;
     }
 
-    _ = windows.SetLastError(.SUCCESS);
+    _ = SetLastError(.SUCCESS);
     const hwnd = CreateWindowExW(
         0,
         class_name,
@@ -39,7 +39,7 @@ pub fn NewHwnd(h_instance: windows.HINSTANCE, window: *windows.Window) !windows.
         h_instance,
         window,
     ) orelse {
-        std.log.err("error while creating window: {}", .{windows.GetLastError()});
+        std.log.err("error while creating window: {}", .{GetLastError()});
         return error.InitFailed;
     };
 
@@ -47,7 +47,7 @@ pub fn NewHwnd(h_instance: windows.HINSTANCE, window: *windows.Window) !windows.
     const scaled_width = @ceil(1280.0 * @as(f32, @floatFromInt(dpi)) / 96.0);
     const scaled_height = @ceil(1024.0 * @as(f32, @floatFromInt(dpi)) / 96.0);
 
-    _ = windows.SetLastError(.SUCCESS);
+    _ = SetLastError(.SUCCESS);
     if (SetWindowPos(
         hwnd,
         null,
@@ -57,7 +57,7 @@ pub fn NewHwnd(h_instance: windows.HINSTANCE, window: *windows.Window) !windows.
         @intFromFloat(scaled_height),
         SWP_NOMOVE,
     ) == 0) {
-        std.log.err("error while setting window position: {}", .{windows.GetLastError()});
+        std.log.err("error while setting window position: {}", .{GetLastError()});
         return error.InitFailed;
     }
 
@@ -76,18 +76,18 @@ pub fn run() void {
 }
 
 fn WindowProc(
-    hwnd: windows.HWND,
-    uMsg: windows.UINT,
-    wParam: windows.WPARAM,
-    lParam: windows.LPARAM,
-) callconv(.winapi) windows.LRESULT {
+    hwnd: HWND,
+    uMsg: UINT,
+    wParam: WPARAM,
+    lParam: LPARAM,
+) callconv(.winapi) LRESULT {
     if (uMsg == WM_CREATE) {
         const pcs: *CREATESTRUCTW = @ptrFromInt(@as(usize, @bitCast(lParam)));
-        const window: *windows.Window = @ptrCast(@alignCast(pcs.lpCreateParams));
+        const window: *platform.Window = @ptrCast(@alignCast(pcs.lpCreateParams));
 
-        _ = windows.SetLastError(.SUCCESS);
+        _ = SetLastError(.SUCCESS);
         const result = SetWindowLongPtrW(hwnd, GWLP_USERDATA, @bitCast(@intFromPtr(window)));
-        if (result == 0 and windows.GetLastError() != .SUCCESS) {
+        if (result == 0 and GetLastError() != .SUCCESS) {
             // TODO: error
             return -1;
         }
@@ -96,76 +96,20 @@ fn WindowProc(
     }
 
     const p = GetWindowLongPtrW(hwnd, GWLP_USERDATA);
-    const window: ?*windows.Window = if (p != 0)
+    const window: ?*platform.Window = if (p != 0)
         @ptrFromInt(@as(usize, @intCast(p)))
     else
         null;
 
     var was_handled = false;
 
-    if (window) |a| {
+    if (window != null) {
         switch (uMsg) {
             WM_PAINT => {
-                if (a.render_target == null) {
-                    a.render_target = a.factory.CreateHwndRenderTarget(hwnd) catch {
-                        return 1;
-                    };
-                    errdefer _ = a.render_target.?.Release();
-
-                    a.render_target.?.GetDpi(&a.dpiX, &a.dpiY);
-
-                    const color = d2d1.COLOR_F{ .r = 0, .g = 0, .b = 0, .a = 1 };
-                    a.brushes[0] = a.render_target.?.CreateSolidColorBrush(
-                        &color,
-                        null,
-                    ) catch {
-                        return 1;
-                    };
-                    errdefer _ = a.brushes[0].Release();
-                }
-
-                const rt = a.render_target.?;
-
-                const identity_matrix = d2d1.MATRIX_3X2_F{
-                    .DUMMYSTRUCTNAME2 = .{
-                        ._11 = 1.0,
-                        ._12 = 0.0,
-                        ._21 = 0.0,
-                        ._22 = 1.0,
-                        ._31 = 0.0,
-                        ._32 = 0.0,
-                    },
-                };
-                const white = d2d1.COLOR_F{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 };
-
-                rt.BeginDraw();
-
-                rt.SetTransform(&identity_matrix);
-                rt.Clear(&white);
-
-                var rc: windows.RECT = undefined;
+                var rc: RECT = undefined;
                 if (GetClientRect(hwnd, &rc) == 0) {
-                    std.log.err("GetClientRect failed: {}", .{windows.GetLastError()});
+                    std.log.err("GetClientRect failed: {}", .{GetLastError()});
                     return 1;
-                }
-                const width_dip = @as(f32, @floatFromInt(rc.right - rc.left)) * (96.0 / a.dpiX);
-                const height_dip = @as(f32, @floatFromInt(rc.bottom - rc.top)) * (96.0 / a.dpiY);
-
-                const button = d2d1.RECT_F{
-                    .left = (width_dip * 0.5) - 100.0,
-                    .top = (height_dip * 0.5) - 100.0,
-                    .right = (width_dip * 0.5) + 100.0,
-                    .bottom = (height_dip * 0.5) + 100.0,
-                };
-
-                const brush = a.brushes[0].?;
-
-                rt.FillRectangle(&button, @ptrCast(brush));
-
-                const hr = rt.EndDraw();
-                if (hr == d2d1.ERR_RECREATE_TARGET) {
-                    a.brushes[0].?.Release();
-                    rt.Release();
                 }
 
                 _ = ValidateRect(hwnd, null);
@@ -174,18 +118,6 @@ fn WindowProc(
                 return 0;
             },
             WM_SIZE => {
-                if (a.render_target) |rt| {
-                    const width: u32 = @intCast(lParam & 0xFFFF);
-                    const height: u32 = @intCast((lParam >> 16) & 0xFFFF);
-
-                    const size = d2d1.SIZE_U{
-                        .width = width,
-                        .height = height,
-                    };
-
-                    _ = rt.Resize(&size);
-                }
-
                 was_handled = true;
                 return 0;
             },
@@ -212,64 +144,11 @@ fn WindowProc(
 }
 
 const WNDPROC = *const fn (
-    windows.HWND,
-    windows.UINT,
-    windows.WPARAM,
-    windows.LPARAM,
-) callconv(.winapi) windows.LRESULT;
-
-const WNDCLASSEXW = extern struct {
-    cbSize: windows.UINT = 0,
-    style: windows.UINT = 0,
-    lpfnWndProc: WNDPROC,
-    cbClsExtra: i32 = 0,
-    cbWndExtra: i32 = 0,
-    hInstance: ?windows.HINSTANCE = null,
-    hIcon: ?windows.HICON = null,
-    hCursor: ?windows.HCURSOR = null,
-    hbrBackground: ?windows.HBRUSH = null,
-    lpszMenuName: ?windows.LPCWSTR = null,
-    lpszClassName: ?windows.LPCWSTR = null,
-    hIconSm: ?windows.HICON = null,
-};
-
-const CREATESTRUCTW = extern struct {
-    lpCreateParams: windows.LPVOID,
-    hInstance: windows.HINSTANCE,
-    hMenu: windows.HMENU,
-    hWndParent: windows.HWND,
-    cy: windows.INT,
-    cx: windows.INT,
-    y: windows.INT,
-    x: windows.INT,
-    style: windows.LONG,
-    lpszName: windows.LPCWSTR,
-    lpszClass: windows.LPCWSTR,
-    dwExStyle: windows.DWORD,
-};
-
-const MSG = extern struct {
-    hwnd: windows.HWND,
-    message: windows.UINT,
-    wParam: windows.WPARAM,
-    lParam: windows.LPARAM,
-    time: windows.DWORD,
-    pt: windows.POINT,
-};
-
-const PAINTSTRUCT = extern struct {
-    hdc: ?windows.HDC = null,
-    fErase: windows.BOOL = 0,
-    rcPaint: windows.RECT = .{
-        .bottom = 0,
-        .left = 0,
-        .right = 0,
-        .top = 0,
-    },
-    fRestore: windows.BOOL = 0,
-    fIncUpdate: windows.BOOL = 0,
-    rgbReserved: [32]windows.BYTE = std.mem.zeroes([32]windows.BYTE),
-};
+    HWND,
+    UINT,
+    WPARAM,
+    LPARAM,
+) callconv(.winapi) LRESULT;
 
 const WM_DESTROY = 0x2;
 const WM_LBUTTONDOWN = 0x0201;
@@ -306,89 +185,162 @@ const SWP_NOMOVE = 0x2;
 
 const COLOR_WINDOW = 5;
 
+const HWND = windows.HWND;
+const UINT = windows.UINT;
+const WPARAM = windows.WPARAM;
+const LPARAM = windows.LPARAM;
+const LRESULT = windows.LRESULT;
+const HINSTANCE = windows.HINSTANCE;
+const LPCWSTR = windows.LPCWSTR;
+const LONG_PTR = windows.LONG_PTR;
+const HMENU = windows.HMENU;
+const INT = windows.INT;
+const LONG = windows.LONG;
+const DWORD = windows.DWORD;
+const HICON = windows.HICON;
+const HCURSOR = windows.HCURSOR;
+const HBRUSH = windows.HBRUSH;
+const BOOL = windows.BOOL;
+const LPVOID = windows.LPVOID;
+const HDC = windows.HDC;
+const RECT = windows.RECT;
+const POINT = windows.POINT;
+const BYTE = windows.BYTE;
+const ATOM = windows.ATOM;
+const SetLastError = windows.kernel32.SetLastError;
+const GetLastError = windows.kernel32.GetLastError;
+
 pub const GWLP_USERDATA: c_int = -21;
 
+const WNDCLASSEXW = extern struct {
+    cbSize: UINT = 0,
+    style: UINT = 0,
+    lpfnWndProc: WNDPROC,
+    cbClsExtra: i32 = 0,
+    cbWndExtra: i32 = 0,
+    hInstance: ?HINSTANCE = null,
+    hIcon: ?HICON = null,
+    hCursor: ?HCURSOR = null,
+    hbrBackground: ?HBRUSH = null,
+    lpszMenuName: ?LPCWSTR = null,
+    lpszClassName: ?LPCWSTR = null,
+    hIconSm: ?HICON = null,
+};
+
+const CREATESTRUCTW = extern struct {
+    lpCreateParams: LPVOID,
+    hInstance: HINSTANCE,
+    hMenu: HMENU,
+    hWndParent: HWND,
+    cy: INT,
+    cx: INT,
+    y: INT,
+    x: INT,
+    style: LONG,
+    lpszName: LPCWSTR,
+    lpszClass: LPCWSTR,
+    dwExStyle: DWORD,
+};
+
+const MSG = extern struct {
+    hwnd: HWND,
+    message: UINT,
+    wParam: WPARAM,
+    lParam: LPARAM,
+    time: DWORD,
+    pt: POINT,
+};
+
+const PAINTSTRUCT = extern struct {
+    hdc: ?HDC = null,
+    fErase: BOOL = 0,
+    rcPaint: RECT = .{
+        .bottom = 0,
+        .left = 0,
+        .right = 0,
+        .top = 0,
+    },
+    fRestore: BOOL = 0,
+    fIncUpdate: BOOL = 0,
+    rgbReserved: [32]BYTE = std.mem.zeroes([32]BYTE),
+};
+
+
 extern "user32" fn DefWindowProcW(
-    hWnd: windows.HWND,
-    Msg: windows.UINT,
-    wParam: windows.WPARAM,
-    lParam: windows.LPARAM,
-) callconv(.winapi) windows.LRESULT;
+    hWnd: HWND,
+    Msg: UINT,
+    wParam: WPARAM,
+    lParam: LPARAM,
+) callconv(.winapi) LRESULT;
 extern "user32" fn PostQuitMessage(hExitCode: i32) callconv(.winapi) void;
 extern "user32" fn CreateWindowExW(
-    dwExStyle: windows.DWORD,
-    lpClassName: ?windows.LPCWSTR,
-    lpWindowName: ?windows.LPCWSTR,
-    dwStyle: windows.DWORD,
+    dwExStyle: DWORD,
+    lpClassName: ?LPCWSTR,
+    lpWindowName: ?LPCWSTR,
+    dwStyle: DWORD,
     X: i32,
     Y: i32,
     nWidth: i32,
     nHeight: i32,
-    hWndParent: ?windows.HWND,
-    hMenu: ?windows.HMENU,
-    hInstance: ?windows.HINSTANCE,
+    hWndParent: ?HWND,
+    hMenu: ?HMENU,
+    hInstance: ?HINSTANCE,
     lpParam: ?*anyopaque,
-) callconv(.winapi) ?windows.HWND;
-extern "user32" fn RegisterClassExW(*const WNDCLASSEXW) callconv(.winapi) windows.ATOM;
+) callconv(.winapi) ?HWND;
+extern "user32" fn RegisterClassExW(*const WNDCLASSEXW) callconv(.winapi) ATOM;
 extern "user32" fn ShowWindow(
-    hWnd: windows.HWND,
+    hWnd: HWND,
     nCmdShow: i32,
-) callconv(.winapi) windows.BOOL;
-extern "user32" fn UpdateWindow(hWnd: windows.HWND) callconv(.winapi) windows.BOOL;
+) callconv(.winapi) BOOL;
+extern "user32" fn UpdateWindow(hWnd: HWND) callconv(.winapi) BOOL;
 extern "user32" fn GetMessageW(
     lpMsg: *MSG,
-    hWnd: ?windows.HWND,
-    wMsgFilterMin: windows.UINT,
-    wMsgFilterMax: windows.UINT,
-) callconv(.winapi) windows.BOOL;
-extern "user32" fn TranslateMessage(lpMsg: *const MSG) callconv(.winapi) windows.BOOL;
-extern "user32" fn DispatchMessageW(lpMsg: *const MSG) callconv(.winapi) windows.LRESULT;
-extern "user32" fn BeginPaint(
-    hWnd: windows.HWND,
-    lpPaint: *PAINTSTRUCT,
-) callconv(.winapi) windows.HDC;
-extern "user32" fn EndPaint(
-    hWnd: windows.HWND,
-    lpPaint: *const PAINTSTRUCT,
-) callconv(.winapi) windows.BOOL;
+    hWnd: ?HWND,
+    wMsgFilterMin: UINT,
+    wMsgFilterMax: UINT,
+) callconv(.winapi) BOOL;
+extern "user32" fn TranslateMessage(lpMsg: *const MSG) callconv(.winapi) BOOL;
+extern "user32" fn DispatchMessageW(lpMsg: *const MSG) callconv(.winapi) LRESULT;
 extern "user32" fn FillRect(
-    hDC: windows.HDC,
-    lprc: *const windows.RECT,
-    hbr: windows.HBRUSH,
+    hDC: HDC,
+    lprc: *const RECT,
+    hbr: HBRUSH,
 ) callconv(.winapi) i32;
 pub extern "user32" fn GetClientRect(
-    hWnd: windows.HWND,
-    lpRect: *windows.RECT,
-) callconv(.winapi) windows.BOOL;
+    hWnd: HWND,
+    lpRect: *RECT,
+) callconv(.winapi) BOOL;
 pub extern "user32" fn SetWindowLongPtrW(
-    hWnd: windows.HWND,
+    hWnd: HWND,
     nIndex: c_int,
-    dwNewLong: windows.LONG_PTR,
-) callconv(.winapi) windows.LONG_PTR;
+    dwNewLong: LONG_PTR,
+) callconv(.winapi) LONG_PTR;
 extern "user32" fn GetWindowLongPtrW(
-    hWnd: windows.HWND,
+    hWnd: HWND,
     nIndex: c_int,
-) callconv(.winapi) windows.LONG_PTR;
+) callconv(.winapi) LONG_PTR;
 extern "user32" fn LoadCursorW(
-    hInstance: ?windows.HINSTANCE,
-    lpCursorname: windows.LPCWSTR,
-) callconv(.winapi) windows.HCURSOR;
-extern "user32" fn GetDpiForWindow(hwnd: windows.HWND) callconv(.winapi) windows.UINT;
+    hInstance: ?HINSTANCE,
+    lpCursorname: LPCWSTR,
+) callconv(.winapi) HCURSOR;
+extern "user32" fn GetDpiForWindow(hwnd: HWND) callconv(.winapi) UINT;
 extern "user32" fn SetWindowPos(
-    hWnd: windows.HWND,
-    hWndInsertAfter: ?windows.HWND,
-    X: windows.INT,
-    Y: windows.INT,
-    cx: windows.INT,
-    cy: windows.INT,
-    uFlags: windows.UINT,
-) callconv(.winapi) windows.BOOL;
+    hWnd: HWND,
+    hWndInsertAfter: ?HWND,
+    X: INT,
+    Y: INT,
+    cx: INT,
+    cy: INT,
+    uFlags: UINT,
+) callconv(.winapi) BOOL;
 extern "user32" fn ValidateRect(
-    hWnd: windows.HWND,
-    lpRect: ?*const windows.RECT,
-) callconv(.winapi) windows.BOOL;
+    hWnd: HWND,
+    lpRect: ?*const RECT,
+) callconv(.winapi) BOOL;
 extern "user32" fn InvalidateRect(
-    hWnd: windows.HWND,
-    lpRect: ?*const windows.RECT,
-    bErase: windows.BOOL,
-) callconv(.winapi) windows.BOOL;
+    hWnd: HWND,
+    lpRect: ?*const RECT,
+    bErase: BOOL,
+) callconv(.winapi) BOOL;
+
+

@@ -1,5 +1,116 @@
 const std = @import("std");
 
+pub fn init(allocator: std.mem.Allocator, config: Config) !Instance {
+    var available_extension_count: u32 = 0;
+
+    switch (vkEnumerateInstanceExtensionProperties(
+        null,
+        &available_extension_count,
+        null,
+    )) {
+        .success, .incomplete => {},
+        .error_out_of_host_memory => return error.OutOfHostMemory,
+        .error_out_of_device_memory => return error.OutOfDeviceMemory,
+        else => return error.Unknown,
+    }
+
+    var available_extensions_properties = try allocator.alloc(
+        ExtensionProperties,
+        available_extension_count,
+    );
+    defer allocator.free(available_extensions_properties);
+
+    switch (vkEnumerateInstanceExtensionProperties(
+        null,
+        &available_extension_count,
+        available_extensions_properties.ptr,
+    )) {
+        .success => {},
+        .incomplete => {
+            std.log.warn("Unable to retrieve all extension properties", .{});
+        },
+        .error_out_of_host_memory => return error.OutOfHostMemory,
+        .error_out_of_device_memory => return error.OutOfDeviceMemory,
+        else => return error.Unknown,
+    }
+
+    const required_extensions = config.required_extensions;
+
+    _ = config.required_layers;
+
+    for (required_extensions) |e| {
+        var found = false;
+        for (available_extensions_properties) |p| {
+            const name = std.mem.sliceTo(&p.extension_name, 0);
+            if (std.mem.eql(u8, name, std.mem.span(e))) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            return error.MissingRequiredExtension;
+        }
+    }
+
+    const app_info: ApplicationInfo = .{
+        .p_application_name = "Tutorial",
+        .application_version = makeVersion(1, 0, 0),
+        .p_engine_name = "No Engine",
+        .engine_version = makeVersion(1, 0, 0),
+        .api_version = api_version_1_4,
+    };
+
+    const create_info: InstanceCreateInfo = .{
+        .enabled_extension_count = @intCast(required_extensions.len),
+        .p_application_info = &app_info,
+        .pp_enabled_extension_names = required_extensions.ptr,
+        .enabled_layer_count = 0,
+        .pp_enabled_layer_names = null,
+        .flags = InstanceCreateFlags.none,
+    };
+
+    var instance: Instance = null;
+
+    switch (vkCreateInstance(&create_info, null, &instance)) {
+        .success => {},
+        .error_out_of_host_memory => return error.OutOfHostMemory,
+        .error_out_of_device_memory => return error.OutOfDeviceMemory,
+        .error_initialization_failed => return error.InitializationFailed,
+        .error_layer_not_present => return error.LayerNotPresent,
+        .error_extension_not_present => return error.ExtensionNotPresent,
+        .error_incompatible_driver => return error.IncompatibleDriver,
+        else => return error.Unknown,
+    }
+
+    return instance;
+}
+
+pub fn deinit(instance: Instance) void {
+    vkDestroyInstance(instance, null);
+}
+
+pub fn makeApiVersion(variant: u32, major: u32, minor: u32, patch: u32) u32 {
+    return (variant << 29) | (major << 22) | (minor << 12) | patch;
+}
+
+pub fn makeVersion(major: u32, minor: u32, patch: u32) u32 {
+    return (major << 22) | (minor << 12) | patch;
+}
+
+const api_version_1_0: u32 = makeApiVersion(0, 1, 0, 0);
+const api_version_1_1: u32 = makeApiVersion(0, 1, 1, 0);
+const api_version_1_2: u32 = makeApiVersion(0, 1, 2, 0);
+const api_version_1_3: u32 = makeApiVersion(0, 1, 3, 0);
+const api_version_1_4: u32 = makeApiVersion(0, 1, 4, 0);
+const max_extension_name_size = 256;
+
+pub const Config = struct {
+    debug: bool = true,
+    required_extensions: []const [*:0]const u8,
+    required_layers: []const [*:0]const u8,
+};
+
 pub const ApplicationInfo = extern struct {
     s_type: StructureType = .application_info,
     p_next: ?*const anyopaque = null,
@@ -16,14 +127,18 @@ pub const InstanceCreateInfo = extern struct {
     flags: InstanceCreateFlags,
     p_application_info: *const ApplicationInfo,
     enabled_layer_count: u32,
-    pp_enabled_layer_names: [*]const [*:0]const u8,
+    pp_enabled_layer_names: ?[*]const [*:0]const u8 = null,
     enabled_extension_count: u32,
-    pp_enabled_extension_names: [*]const [*:0]const u8,
+    pp_enabled_extension_names: ?[*]const [*:0]const u8 = null,
 };
 
-pub const Instance = ?*opaque {};
+pub const ExtensionProperties = extern struct {
+    extension_name: [max_extension_name_size]u8,
+    spec_version: u32,
+};
 
 pub const InstanceCreateFlags = enum(u32) {
+    none = 0,
     enumerate_portability_bit_khr = 0x00000001,
     flag_bits_max_enum = 0x7FFFFFFF,
 };
@@ -1186,3 +1301,23 @@ pub const StructureType = enum(u32) {
     physical_device_pipeline_cache_incremental_mode_features_sec = 1000637000,
     max_enum = 0x7FFFFFFF,
 };
+
+pub const Instance = ?*opaque {};
+pub const AllocationCallbacks = ?*opaque {};
+
+extern "vulkan-1" fn vkCreateInstance(
+    pCreateInfo: *const InstanceCreateInfo,
+    pAllocator: ?*const AllocationCallbacks,
+    pInstance: *Instance,
+) callconv(.c) Result;
+
+extern "vulkan-1" fn vkDestroyInstance(
+    instance: Instance,
+    pAllocator: ?*const AllocationCallbacks,
+) callconv(.c) void;
+
+extern "vulkan-1" fn vkEnumerateInstanceExtensionProperties(
+    pLayerName: ?[*:0]const u8,
+    pPropertyCount: *u32,
+    pProperties: ?[*]ExtensionProperties,
+) callconv(.c) Result;

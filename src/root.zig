@@ -21,17 +21,28 @@ pub const Window = union(enum) {
 
 pub const Application = struct {
     platform: Window,
-    vk: vk.Api,
+    instance: vk.Instance,
 
     pub fn init(allocator: std.mem.Allocator) !Application {
-        var vk_api = try vk.Api.init(allocator);
-        errdefer vk_api.deinit();
-
-        const platform = Window{
-            .windows = try windows.NewWindow(allocator),
+        const vk_config = switch (builtin.os.tag) {
+            .windows => vk.Config{
+                .required_extensions = &[_][*:0]const u8{
+                    "VK_KHR_surface",
+                    "VK_KHR_win32_surface",
+                },
+                .required_layers = &[_][*:0]const u8{},
+            },
+            else => @compileError("unsupported platform"),
         };
 
-        return .{ .platform = platform, .vk = vk_api };
+        const instance = try vk.init(allocator, vk_config);
+
+        const platform = switch (builtin.os.tag) {
+            .windows => Window{ .windows = try windows.NewWindow(allocator) },
+            else => @compileError("unsupported platform"),
+        };
+
+        return .{ .platform = platform, .instance = instance };
     }
 
     pub fn run(self: *Application) void {
@@ -39,7 +50,7 @@ pub const Application = struct {
     }
 
     pub fn release(self: *Application, allocator: std.mem.Allocator) void {
-        self.vk.deinit();
         self.platform.deinit(allocator);
+        vk.deinit(self.instance);
     }
 };
