@@ -1,11 +1,32 @@
 const std = @import("std");
 
 pub fn init(allocator: std.mem.Allocator, config: Config) !Instance {
+    var required_extensions = config.required_extensions;
+    var required_layers = config.required_layers;
+    if (config.debug) {
+        for (validation_layers) |layer| {
+            try required_layers.append(allocator, layer);
+        }
+
+        try required_extensions.append(allocator, "VK_EXT_debug_utils");
+    }
+
     var available_extension_count: u32 = 0;
+    var available_layer_count: u32 = 0;
 
     switch (vkEnumerateInstanceExtensionProperties(
         null,
         &available_extension_count,
+        null,
+    )) {
+        .success, .incomplete => {},
+        .error_out_of_host_memory => return error.OutOfHostMemory,
+        .error_out_of_device_memory => return error.OutOfDeviceMemory,
+        else => return error.Unknown,
+    }
+
+    switch (vkEnumerateInstanceLayerProperties(
+        &available_layer_count,
         null,
     )) {
         .success, .incomplete => {},
@@ -19,6 +40,12 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !Instance {
         available_extension_count,
     );
     defer allocator.free(available_extensions_properties);
+
+    var available_layers_properties = try allocator.alloc(
+        LayerProperties,
+        available_layer_count,
+    );
+    defer allocator.free(available_layers_properties);
 
     switch (vkEnumerateInstanceExtensionProperties(
         null,
@@ -34,11 +61,20 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !Instance {
         else => return error.Unknown,
     }
 
-    const required_extensions = config.required_extensions;
+    switch (vkEnumerateInstanceLayerProperties(
+        &available_layer_count,
+        available_layers_properties.ptr,
+    )) {
+        .success => {},
+        .incomplete => {
+            std.log.warn("Unable to retrieve all layer properties", .{});
+        },
+        .error_out_of_host_memory => return error.OutOfHostMemory,
+        .error_out_of_device_memory => return error.OutOfDeviceMemory,
+        else => return error.Unknown,
+    }
 
-    _ = config.required_layers;
-
-    for (required_extensions) |e| {
+    for (required_extensions.items) |e| {
         var found = false;
         for (available_extensions_properties) |p| {
             const name = std.mem.sliceTo(&p.extension_name, 0);
@@ -53,6 +89,21 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !Instance {
         }
     }
 
+    for (required_layers.items) |l| {
+        var found = false;
+        for (available_layers_properties) |p| {
+            const name = std.mem.sliceTo(&p.layer_name, 0);
+            if (std.mem.eql(u8, name, std.mem.span(l))) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            return error.MissingRequiredLayer;
+        }
+    }
+
     const app_info: ApplicationInfo = .{
         .p_application_name = "Tutorial",
         .application_version = makeVersion(1, 0, 0),
@@ -62,11 +113,11 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !Instance {
     };
 
     const create_info: InstanceCreateInfo = .{
-        .enabled_extension_count = @intCast(required_extensions.len),
+        .enabled_extension_count = @intCast(required_extensions.items.len),
         .p_application_info = &app_info,
-        .pp_enabled_extension_names = required_extensions.ptr,
-        .enabled_layer_count = 0,
-        .pp_enabled_layer_names = null,
+        .pp_enabled_extension_names = required_extensions.items.ptr,
+        .enabled_layer_count = @intCast(required_layers.items.len),
+        .pp_enabled_layer_names = required_layers.items.ptr,
         .flags = InstanceCreateFlags.none,
     };
 
@@ -104,11 +155,15 @@ const api_version_1_2: u32 = makeApiVersion(0, 1, 2, 0);
 const api_version_1_3: u32 = makeApiVersion(0, 1, 3, 0);
 const api_version_1_4: u32 = makeApiVersion(0, 1, 4, 0);
 const max_extension_name_size = 256;
+const max_description_size = 256;
+const validation_layers = [_][*:0]const u8{
+    "VK_LAYER_KHRONOS_validation",
+};
 
 pub const Config = struct {
     debug: bool = true,
-    required_extensions: []const [*:0]const u8,
-    required_layers: []const [*:0]const u8,
+    required_extensions: *std.ArrayList([*:0]const u8),
+    required_layers: *std.ArrayList([*:0]const u8),
 };
 
 pub const ApplicationInfo = extern struct {
@@ -135,6 +190,13 @@ pub const InstanceCreateInfo = extern struct {
 pub const ExtensionProperties = extern struct {
     extension_name: [max_extension_name_size]u8,
     spec_version: u32,
+};
+
+pub const LayerProperties = extern struct {
+    layer_name: [max_extension_name_size]u8,
+    spec_version: u32,
+    implementation_version: u32,
+    description: [max_description_size]u8,
 };
 
 pub const InstanceCreateFlags = enum(u32) {
@@ -1320,4 +1382,9 @@ extern "vulkan-1" fn vkEnumerateInstanceExtensionProperties(
     pLayerName: ?[*:0]const u8,
     pPropertyCount: *u32,
     pProperties: ?[*]ExtensionProperties,
+) callconv(.c) Result;
+
+extern "vulkan-1" fn vkEnumerateInstanceLayerProperties(
+    pPropertyCount: *u32,
+    pProperties: ?[*]LayerProperties,
 ) callconv(.c) Result;
