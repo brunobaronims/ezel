@@ -4,7 +4,7 @@ const builtin = @import("builtin");
 const Self = @This();
 
 instance: Instance,
-debug_messenger: DebugUtilsMessenger,
+debug_messenger: DebugUtilsMessenger = null,
 
 pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
     var vk = try allocator.create(Self);
@@ -121,7 +121,7 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
         .api_version = api_version_1_4,
     };
 
-    const create_info: InstanceCreateInfo = .{
+    const instance_create_info: InstanceCreateInfo = .{
         .enabled_extension_count = @intCast(required_extensions.items.len),
         .p_application_info = &app_info,
         .pp_enabled_extension_names = required_extensions.items.ptr,
@@ -132,7 +132,7 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
 
     var instance: Instance = null;
 
-    switch (vkCreateInstance(&create_info, null, &instance)) {
+    switch (vkCreateInstance(&instance_create_info, null, &instance)) {
         .success => {},
         .error_out_of_host_memory => return error.OutOfHostMemory,
         .error_out_of_device_memory => return error.OutOfDeviceMemory,
@@ -143,13 +143,73 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
         else => return error.Unknown,
     }
 
-    vk.* = .{ .instance = undefined, .debug_messenger = undefined };
     vk.instance = instance;
+
+    if (!config.debug) {
+        return vk;
+    }
+
+    const severity_flags = @intFromEnum(
+        DebugUtilsMessageSeverityFlagBits.verbose_bit_ext,
+    ) |
+        @intFromEnum(
+            DebugUtilsMessageSeverityFlagBits.warning_bit_ext,
+        ) |
+        @intFromEnum(
+            DebugUtilsMessageSeverityFlagBits.error_bit_ext,
+        );
+
+    const message_type_flags = @intFromEnum(
+        DebugUtilsMessageTypeFlagBits.general_bit_ext,
+    ) |
+        @intFromEnum(
+            DebugUtilsMessageTypeFlagBits.performance_bit_ext,
+        ) |
+        @intFromEnum(
+            DebugUtilsMessageTypeFlagBits.validation_bit_ext,
+        );
+
+    var messenger_create_info: DebugUtilsMessengerCreateInfo = .{
+        .message_severity = severity_flags,
+        .message_type = message_type_flags,
+        .pfn_user_callback = debugCallback,
+    };
+
+    var debug_messenger: DebugUtilsMessenger = null;
+
+    const CreateDebugMessenger: PFN_vkCreateDebugUtilsMessengerEXT = @ptrCast(
+        vkGetInstanceProcAddr(
+            instance,
+            "vkCreateDebugUtilsMessengerEXT",
+        ),
+    );
+    if (CreateDebugMessenger == null) return error.ExtensionNotPresent;
+
+    switch (CreateDebugMessenger.?(
+        instance,
+        &messenger_create_info,
+        null,
+        &debug_messenger,
+    )) {
+        .success => {},
+        .error_out_of_host_memory => return error.OutOfHostMemory,
+        else => return error.Unknown,
+    }
+
+    vk.debug_messenger = debug_messenger;
 
     return vk;
 }
 
 pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
+    if (self.debug_messenger) |messenger| {
+        const DestroyDebugMessenger: PFN_vkDestroyDebugUtilsMessengerEXT = @ptrCast(vkGetInstanceProcAddr(
+            self.instance,
+            "vkDestroyDebugUtilsMessengerEXT",
+        ));
+        DestroyDebugMessenger.?(self.instance, messenger, null);
+    }
+
     vkDestroyInstance(self.instance, null);
     allocator.destroy(self);
 }
@@ -167,19 +227,28 @@ fn debugCallback(
     message_type: DebugUtilsMessageTypeFlags,
     p_callback_data: ?*const DebugUtilsMessengerCallbackData,
     p_user_data: ?*anyopaque,
-) callconv(api_call) Bool32 {
+) callconv(vk_call) Bool32 {
     _ = severity;
     _ = p_user_data;
 
     const data = p_callback_data.?;
 
-    std.debug.print("validation layer: type {}, msg: {s}\n", .{
-        message_type,
-        data.p_message,
-    });
+    if (data.p_message) |msg| {
+        std.debug.print("validation layer: type {}, msg: {s}\n", .{
+            message_type,
+            msg,
+        });
+    }
 
     return 0;
 }
+
+const DebugUtilsMessengerCallback = ?*const fn (
+    severity: DebugUtilsMessageSeverityFlags,
+    message_type: DebugUtilsMessageTypeFlags,
+    p_callback_data: ?*const DebugUtilsMessengerCallbackData,
+    p_user_data: ?*anyopaque,
+) callconv(vk_call) Bool32;
 
 const api_version_1_0: u32 = makeApiVersion(0, 1, 0, 0);
 const api_version_1_1: u32 = makeApiVersion(0, 1, 1, 0);
@@ -191,7 +260,7 @@ const max_description_size = 256;
 const validation_layers = [_][*:0]const u8{
     "VK_LAYER_KHRONOS_validation",
 };
-const api_call = if (builtin.os.tag == .windows)
+const vk_call = if (builtin.os.tag == .windows)
     std.builtin.CallingConvention.winapi
 else
     std.builtin.CallingConvention.c;
@@ -199,8 +268,22 @@ else
 pub const InstanceCreateFlags = u32;
 pub const DebugUtilsMessageSeverityFlags = u32;
 pub const DebugUtilsMessageTypeFlags = u32;
+pub const DebugUtilsMessengerCreateFlags = u32;
 pub const DebugUtilsMessengerCallbackDataFlags = u32;
 pub const Bool32 = u32;
+
+pub const PFN_vkCreateDebugUtilsMessengerEXT = ?*const fn (
+    Instance,
+    *DebugUtilsMessengerCreateInfo,
+    ?*const AllocationCallbacks,
+    *DebugUtilsMessenger,
+) callconv(vk_call) Result;
+
+pub const PFN_vkDestroyDebugUtilsMessengerEXT = ?*const fn (
+    Instance,
+    DebugUtilsMessenger,
+    ?*const AllocationCallbacks,
+) callconv(vk_call) void;
 
 pub const Config = struct {
     debug: bool = true,
@@ -227,6 +310,16 @@ pub const InstanceCreateInfo = extern struct {
     pp_enabled_layer_names: ?[*]const [*:0]const u8 = null,
     enabled_extension_count: u32,
     pp_enabled_extension_names: ?[*]const [*:0]const u8 = null,
+};
+
+pub const DebugUtilsMessengerCreateInfo = extern struct {
+    s_type: StructureType = .debug_utils_messenger_create_info_ext,
+    p_next: ?*const anyopaque = null,
+    flags: DebugUtilsMessengerCreateFlags = 0,
+    message_severity: DebugUtilsMessageSeverityFlags,
+    message_type: DebugUtilsMessageTypeFlags,
+    pfn_user_callback: DebugUtilsMessengerCallback,
+    p_user_data: ?*anyopaque = null,
 };
 
 pub const ExtensionProperties = extern struct {
@@ -1515,20 +1608,25 @@ extern "vulkan-1" fn vkCreateInstance(
     pCreateInfo: *const InstanceCreateInfo,
     pAllocator: ?*const AllocationCallbacks,
     pInstance: *Instance,
-) callconv(api_call) Result;
+) callconv(vk_call) Result;
 
 extern "vulkan-1" fn vkDestroyInstance(
     instance: Instance,
     pAllocator: ?*const AllocationCallbacks,
-) callconv(api_call) void;
+) callconv(vk_call) void;
 
 extern "vulkan-1" fn vkEnumerateInstanceExtensionProperties(
     pLayerName: ?[*:0]const u8,
     pPropertyCount: *u32,
     pProperties: ?[*]ExtensionProperties,
-) callconv(api_call) Result;
+) callconv(vk_call) Result;
 
 extern "vulkan-1" fn vkEnumerateInstanceLayerProperties(
     pPropertyCount: *u32,
     pProperties: ?[*]LayerProperties,
-) callconv(api_call) Result;
+) callconv(vk_call) Result;
+
+extern "vulkan-1" fn vkGetInstanceProcAddr(
+    instance: Instance,
+    pName: [*:0]const u8,
+) callconv(vk_call) ?*const anyopaque;

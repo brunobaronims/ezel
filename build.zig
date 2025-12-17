@@ -31,7 +31,7 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run unit tests");
 
     const lib_tests = b.addTest(.{ .root_module = b.createModule(.{
-        .root_source_file = b.path("src/Root.zig"),
+        .root_source_file = b.path("src/Ezel.zig"),
         .target = target,
         .optimize = optimize,
     }) });

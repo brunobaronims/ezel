@@ -18,11 +18,6 @@ pub fn init(allocator: std.mem.Allocator, vk: *Vulkan) !*Self {
     var window = try allocator.create(Self);
     errdefer allocator.destroy(window);
 
-    window.* = .{
-        .hwnd = undefined,
-        .vk = undefined,
-    };
-
     const h_module = windows.kernel32.GetModuleHandleW(null) orelse {
         return error.InitFailed;
     };

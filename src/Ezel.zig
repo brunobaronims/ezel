@@ -21,12 +21,9 @@ pub fn init(allocator: std.mem.Allocator) !Self {
         else => @compileError("unsupported platform"),
     }
 
-    const vk_config = switch (builtin.os.tag) {
-        .windows => Vulkan.Config{
-            .required_extensions = &required_extensions,
-            .required_layers = &required_layers,
-        },
-        else => @compileError("unsupported platform"),
+    const vk_config: Vulkan.Config = .{
+        .required_extensions = &required_extensions,
+        .required_layers = &required_layers,
     };
 
     const vk = try Vulkan.init(allocator, vk_config);
@@ -52,15 +49,15 @@ pub const Window = union(enum) {
 
     pub fn run(self: *Window) void {
         switch (self.*) {
-            inline else => |win| win.run(),
+            inline else => |w| w.run(),
         }
     }
 
     pub fn deinit(self: *Window, allocator: std.mem.Allocator) void {
         switch (self.*) {
-            inline else => |win| {
-                win.deinit(allocator);
-                allocator.destroy(win);
+            inline else => |w| {
+                w.deinit(allocator);
+                allocator.destroy(w);
             },
         }
     }
