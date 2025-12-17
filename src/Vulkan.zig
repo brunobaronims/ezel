@@ -19,7 +19,10 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
             try required_layers.append(allocator, layer);
         }
 
-        try required_extensions.append(allocator, c.VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        try required_extensions.append(
+            allocator,
+            c.VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
+        );
     }
 
     var available_extension_count: u32 = 0;
@@ -86,14 +89,12 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
     }
 
     for (required_extensions.items) |e| {
-        var found = false;
-        for (available_extensions_properties) |p| {
+        const found = for (available_extensions_properties) |p| {
             const name = std.mem.sliceTo(&p.extensionName, 0);
             if (std.mem.eql(u8, name, std.mem.span(e))) {
-                found = true;
-                break;
+                break true;
             }
-        }
+        } else false;
 
         if (!found) {
             return error.MissingRequiredExtension;
@@ -101,14 +102,12 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
     }
 
     for (required_layers.items) |l| {
-        var found = false;
-        for (available_layers_properties) |p| {
+        const found = for (available_layers_properties) |p| {
             const name = std.mem.sliceTo(&p.layerName, 0);
             if (std.mem.eql(u8, name, std.mem.span(l))) {
-                found = true;
-                break;
+                break true;
             }
-        }
+        } else false;
 
         if (!found) {
             return error.MissingRequiredLayer;
@@ -145,44 +144,159 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
         else => return error.Unknown,
     }
 
-    // var available_device_count: u32 = 0;
-    // switch (c.vkEnumeratePhysicalDevices(
-    //     vk.instance,
-    //     &available_device_count,
-    //     null,
-    // )) {
-    //     c.VK_SUCCESS, c.VK_INCOMPLETE => {},
-    //     c.VK_ERROR_INITIALIZATION_FAILED => return error.InitializationFailed,
-    //     c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
-    //     c.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
-    //     else => return error.Unknown,
-    // }
-    //
-    // var available_devices = try allocator.alloc(
-    //     c.VkPhysicalDevice,
-    //     available_device_count,
-    // );
-    // switch (c.vkEnumeratePhysicalDevices(
-    //     vk.instance,
-    //     &available_device_count,
-    //     &available_devices,
-    // )) {
-    //     c.VK_SUCCESS => {},
-    //     c.VK_INCOMPLETE => {
-    //         std.log.warn("Unable to retrieve all physical devices", .{});
-    //     },
-    //     c.VK_ERROR_INITIALIZATION_FAILED => return error.InitializationFailed,
-    //     c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
-    //     c.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
-    // }
+    errdefer c.vkDestroyInstance(vk.instance, null);
+
+    var available_device_count: u32 = 0;
+    switch (c.vkEnumeratePhysicalDevices(
+        vk.instance,
+        &available_device_count,
+        null,
+    )) {
+        c.VK_SUCCESS, c.VK_INCOMPLETE => {},
+        c.VK_ERROR_INITIALIZATION_FAILED => return error.InitializationFailed,
+        c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
+        c.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
+        else => return error.Unknown,
+    }
+
+    var available_devices = try allocator.alloc(
+        c.VkPhysicalDevice,
+        available_device_count,
+    );
+    defer allocator.free(available_devices);
+    switch (c.vkEnumeratePhysicalDevices(
+        vk.instance,
+        &available_device_count,
+        available_devices.ptr,
+    )) {
+        c.VK_SUCCESS => {},
+        c.VK_INCOMPLETE => {
+            std.log.warn("Unable to retrieve all physical devices", .{});
+        },
+        c.VK_ERROR_INITIALIZATION_FAILED => return error.InitializationFailed,
+        c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
+        c.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
+        else => return error.Unknown,
+    }
+
+    const found_suitable_gpu = for (available_devices) |d| {
+        var queue_family_property_count: u32 = 0;
+        c.vkGetPhysicalDeviceQueueFamilyProperties2(
+            d,
+            &queue_family_property_count,
+            null,
+        );
+
+        var queue_families = try allocator.alloc(
+            c.VkQueueFamilyProperties2,
+            queue_family_property_count,
+        );
+        defer allocator.free(queue_families);
+
+        for (queue_families) |*props| {
+            props.* = .{
+                .sType = c.VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2,
+                .queueFamilyProperties = undefined,
+            };
+        }
+
+        c.vkGetPhysicalDeviceQueueFamilyProperties2(
+            d,
+            &queue_family_property_count,
+            queue_families.ptr,
+        );
+
+        var device: c.VkPhysicalDeviceProperties2 = .{
+            .sType = c.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+        };
+        c.vkGetPhysicalDeviceProperties2(
+            d,
+            &device,
+        );
+
+        var is_suitable = device.properties.apiVersion >= c.VK_API_VERSION_1_3;
+
+        const supports_graphics = for (queue_families) |q| {
+            if ((q.queueFamilyProperties.queueFlags &
+                c.VK_QUEUE_GRAPHICS_BIT) != 0)
+            {
+                break true;
+            }
+        } else false;
+
+        is_suitable = is_suitable and supports_graphics;
+
+        var device_extension_property_count: u32 = 0;
+        switch (c.vkEnumerateDeviceExtensionProperties(
+            d,
+            null,
+            &device_extension_property_count,
+            null,
+        )) {
+            c.VK_SUCCESS, c.VK_INCOMPLETE => {},
+            c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
+            c.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
+            else => return error.Unknown,
+        }
+
+        var available_extension_properties = try allocator.alloc(
+            c.VkExtensionProperties,
+            device_extension_property_count,
+        );
+        defer allocator.free(available_extension_properties);
+
+        switch (c.vkEnumerateDeviceExtensionProperties(
+            d,
+            null,
+            &device_extension_property_count,
+            available_extension_properties.ptr,
+        )) {
+            c.VK_SUCCESS => {},
+            c.VK_INCOMPLETE => {
+                std.log.warn("Unable to retrieve all physical devices", .{});
+            },
+            c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
+            c.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
+            else => return error.Unknown,
+        }
+
+        var found = std.bit_set.StaticBitSet(device_extensions.len).initEmpty();
+
+        for (device_extensions, 0..) |extension_name, i| {
+            for (available_extension_properties) |p| {
+                const name = std.mem.sliceTo(&p.extensionName, 0);
+                if (std.mem.eql(u8, name, std.mem.span(extension_name))) {
+                    found.set(i);
+                    break;
+                }
+            }
+        }
+
+        is_suitable = is_suitable and (found.count() == device_extensions.len);
+
+        if (is_suitable) {
+            vk.physical_device = d; 
+            break is_suitable;
+        }
+    } else false;
+
+    if (!found_suitable_gpu) {
+        return error.SuitableGpuNotFound;
+    }
 
     if (!config.debug) {
         return vk;
     }
 
-    const severity_flags = c.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | c.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | c.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
+    const severity_flags =
+        c.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT |
+        c.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+        c.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
 
-    const message_type_flags = c.VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | c.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | c.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+    const message_type_flags =
+        c.VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+        c.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT |
+        c.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
 
     var messenger_create_info: c.VkDebugUtilsMessengerCreateInfoEXT = .{
         .sType = c.VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
@@ -191,12 +305,13 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
         .pfnUserCallback = debugCallback,
     };
 
-    const CreateDebugMessenger: c.PFN_vkCreateDebugUtilsMessengerEXT = @ptrCast(
-        c.vkGetInstanceProcAddr(
-            vk.instance,
-            "vkCreateDebugUtilsMessengerEXT",
-        ),
-    );
+    const CreateDebugMessenger: c.PFN_vkCreateDebugUtilsMessengerEXT =
+        @ptrCast(
+            c.vkGetInstanceProcAddr(
+                vk.instance,
+                "vkCreateDebugUtilsMessengerEXT",
+            ),
+        );
     if (CreateDebugMessenger == null) return error.ExtensionNotPresent;
 
     switch (CreateDebugMessenger.?(
@@ -215,12 +330,13 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
 
 pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
     if (self.debug_messenger) |messenger| {
-        const DestroyDebugMessenger: c.PFN_vkDestroyDebugUtilsMessengerEXT = @ptrCast(
-            c.vkGetInstanceProcAddr(
-                self.instance,
-                "vkDestroyDebugUtilsMessengerEXT",
-            ),
-        );
+        const DestroyDebugMessenger: c.PFN_vkDestroyDebugUtilsMessengerEXT =
+            @ptrCast(
+                c.vkGetInstanceProcAddr(
+                    self.instance,
+                    "vkDestroyDebugUtilsMessengerEXT",
+                ),
+            );
         DestroyDebugMessenger.?(self.instance, messenger, null);
     }
 
@@ -255,6 +371,12 @@ else
     std.builtin.CallingConvention.c;
 const validation_layers = [_][*:0]const u8{
     "VK_LAYER_KHRONOS_validation",
+};
+const device_extensions = [_][*:0]const u8{
+    c.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+    c.VK_KHR_SPIRV_1_4_EXTENSION_NAME,
+    c.VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+    c.VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
 };
 
 pub const Config = struct {
