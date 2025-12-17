@@ -12,6 +12,35 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
     var vk = try allocator.create(Self);
     errdefer allocator.destroy(vk);
 
+    try vk.createInstance(allocator, config);
+    errdefer c.vkDestroyInstance(vk.instance, null);
+
+    if (config.debug) {
+        try vk.setupDebugMessenger();
+    }
+
+    try vk.pickPhysicalDevice(allocator);
+
+    return vk;
+}
+
+pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
+    if (self.debug_messenger) |messenger| {
+        const DestroyDebugMessenger: c.PFN_vkDestroyDebugUtilsMessengerEXT =
+            @ptrCast(
+                c.vkGetInstanceProcAddr(
+                    self.instance,
+                    "vkDestroyDebugUtilsMessengerEXT",
+                ),
+            );
+        DestroyDebugMessenger.?(self.instance, messenger, null);
+    }
+
+    c.vkDestroyInstance(self.instance, null);
+    allocator.destroy(self);
+}
+
+fn createInstance(self: *Self, allocator: std.mem.Allocator, config: Config) !void {
     var required_extensions = config.required_extensions;
     var required_layers = config.required_layers;
     if (config.debug) {
@@ -133,7 +162,7 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
         .flags = 0,
     };
 
-    switch (c.vkCreateInstance(&instance_create_info, null, &vk.instance)) {
+    switch (c.vkCreateInstance(&instance_create_info, null, &self.instance)) {
         c.VK_SUCCESS => {},
         c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
         c.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
@@ -143,12 +172,12 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
         c.VK_ERROR_INCOMPATIBLE_DRIVER => return error.IncompatibleDriver,
         else => return error.Unknown,
     }
+}
 
-    errdefer c.vkDestroyInstance(vk.instance, null);
-
+fn pickPhysicalDevice(self: *Self, allocator: std.mem.Allocator) !void {
     var available_device_count: u32 = 0;
     switch (c.vkEnumeratePhysicalDevices(
-        vk.instance,
+        self.instance,
         &available_device_count,
         null,
     )) {
@@ -165,7 +194,7 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
     );
     defer allocator.free(available_devices);
     switch (c.vkEnumeratePhysicalDevices(
-        vk.instance,
+        self.instance,
         &available_device_count,
         available_devices.ptr,
     )) {
@@ -275,7 +304,7 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
         is_suitable = is_suitable and (found.count() == device_extensions.len);
 
         if (is_suitable) {
-            vk.physical_device = d; 
+            self.physical_device = d;
             break is_suitable;
         }
     } else false;
@@ -283,11 +312,9 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
     if (!found_suitable_gpu) {
         return error.SuitableGpuNotFound;
     }
+}
 
-    if (!config.debug) {
-        return vk;
-    }
-
+fn setupDebugMessenger(self: *Self) !void {
     const severity_flags =
         c.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT |
         c.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
@@ -308,40 +335,22 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
     const CreateDebugMessenger: c.PFN_vkCreateDebugUtilsMessengerEXT =
         @ptrCast(
             c.vkGetInstanceProcAddr(
-                vk.instance,
+                self.instance,
                 "vkCreateDebugUtilsMessengerEXT",
             ),
         );
     if (CreateDebugMessenger == null) return error.ExtensionNotPresent;
 
     switch (CreateDebugMessenger.?(
-        vk.instance,
+        self.instance,
         &messenger_create_info,
         null,
-        &vk.debug_messenger,
+        &self.debug_messenger,
     )) {
         c.VK_SUCCESS => {},
         c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
         else => return error.Unknown,
     }
-
-    return vk;
-}
-
-pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
-    if (self.debug_messenger) |messenger| {
-        const DestroyDebugMessenger: c.PFN_vkDestroyDebugUtilsMessengerEXT =
-            @ptrCast(
-                c.vkGetInstanceProcAddr(
-                    self.instance,
-                    "vkDestroyDebugUtilsMessengerEXT",
-                ),
-            );
-        DestroyDebugMessenger.?(self.instance, messenger, null);
-    }
-
-    c.vkDestroyInstance(self.instance, null);
-    allocator.destroy(self);
 }
 
 fn debugCallback(
