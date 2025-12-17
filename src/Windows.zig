@@ -29,7 +29,9 @@ pub fn init(allocator: std.mem.Allocator, vk: *Vulkan) !*Self {
     return window;
 }
 
-pub fn drawRectangle() !void {
+pub fn drawRectangle(self: *Self) !void {
+    _ = self; 
+
     return error.NotImplemented;
 }
 

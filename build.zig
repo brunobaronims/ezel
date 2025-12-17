@@ -12,7 +12,16 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         }),
     });
+    
+    const vk = b.addTranslateC(.{
+        .root_source_file = .{ .cwd_relative = "/mnt/c/VulkanSDK/1.4.328.1/Include/vulkan/vulkan_core.h" },
+        .target = target,
+        .optimize = optimize,
+    });
+    vk.addIncludePath(.{ .cwd_relative = "/mnt/c/VulkanSDK/1.4.328.1/Include" });
+    const vk_mod = vk.createModule();
 
+    exe.root_module.addImport("vulkan_c", vk_mod);
     exe.addLibraryPath(.{ .cwd_relative = "/mnt/c/VulkanSDK/1.4.328.1/Lib" });
     exe.linkSystemLibrary("user32");
     exe.linkSystemLibrary("d2d1");
