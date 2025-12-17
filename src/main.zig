@@ -1,5 +1,5 @@
 const std = @import("std");
-const ezel = @import("root.zig");
+const Ezel = @import("Ezel.zig");
 
 pub fn main() void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -11,7 +11,7 @@ pub fn main() void {
     }
     const allocator = gpa.allocator();
 
-    var app = ezel.Application.init(allocator) catch |err| {
+    var app = Ezel.init(allocator) catch |err| {
         std.log.err("{}", .{err});
         return;
     };

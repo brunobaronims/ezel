@@ -1,6 +1,15 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
-pub fn init(allocator: std.mem.Allocator, config: Config) !Instance {
+const Self = @This();
+
+instance: Instance,
+debug_messenger: DebugUtilsMessenger,
+
+pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
+    var vk = try allocator.create(Self);
+    errdefer allocator.destroy(vk);
+
     var required_extensions = config.required_extensions;
     var required_layers = config.required_layers;
     if (config.debug) {
@@ -118,7 +127,7 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !Instance {
         .pp_enabled_extension_names = required_extensions.items.ptr,
         .enabled_layer_count = @intCast(required_layers.items.len),
         .pp_enabled_layer_names = required_layers.items.ptr,
-        .flags = InstanceCreateFlags.none,
+        .flags = 0,
     };
 
     var instance: Instance = null;
@@ -134,11 +143,15 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !Instance {
         else => return error.Unknown,
     }
 
-    return instance;
+    vk.* = .{ .instance = undefined, .debug_messenger = undefined };
+    vk.instance = instance;
+
+    return vk;
 }
 
-pub fn deinit(instance: Instance) void {
-    vkDestroyInstance(instance, null);
+pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
+    vkDestroyInstance(self.instance, null);
+    allocator.destroy(self);
 }
 
 pub fn makeApiVersion(variant: u32, major: u32, minor: u32, patch: u32) u32 {
@@ -147,6 +160,25 @@ pub fn makeApiVersion(variant: u32, major: u32, minor: u32, patch: u32) u32 {
 
 pub fn makeVersion(major: u32, minor: u32, patch: u32) u32 {
     return (major << 22) | (minor << 12) | patch;
+}
+
+fn debugCallback(
+    severity: DebugUtilsMessageSeverityFlags,
+    message_type: DebugUtilsMessageTypeFlags,
+    p_callback_data: ?*const DebugUtilsMessengerCallbackData,
+    p_user_data: ?*anyopaque,
+) callconv(api_call) Bool32 {
+    _ = severity;
+    _ = p_user_data;
+
+    const data = p_callback_data.?;
+
+    std.debug.print("validation layer: type {}, msg: {s}\n", .{
+        message_type,
+        data.p_message,
+    });
+
+    return 0;
 }
 
 const api_version_1_0: u32 = makeApiVersion(0, 1, 0, 0);
@@ -159,6 +191,16 @@ const max_description_size = 256;
 const validation_layers = [_][*:0]const u8{
     "VK_LAYER_KHRONOS_validation",
 };
+const api_call = if (builtin.os.tag == .windows)
+    std.builtin.CallingConvention.winapi
+else
+    std.builtin.CallingConvention.c;
+
+pub const InstanceCreateFlags = u32;
+pub const DebugUtilsMessageSeverityFlags = u32;
+pub const DebugUtilsMessageTypeFlags = u32;
+pub const DebugUtilsMessengerCallbackDataFlags = u32;
+pub const Bool32 = u32;
 
 pub const Config = struct {
     debug: bool = true,
@@ -199,10 +241,52 @@ pub const LayerProperties = extern struct {
     description: [max_description_size]u8,
 };
 
-pub const InstanceCreateFlags = enum(u32) {
-    none = 0,
+pub const DebugUtilsMessengerCallbackData = extern struct {
+    s_type: StructureType = .debug_utils_messenger_callback_data_ext,
+    p_next: ?*const anyopaque = null,
+    flags: DebugUtilsMessageTypeFlags,
+    p_message_id_name: ?[*:0]const u8 = null,
+    message_id_number: i32,
+    p_message: ?[*:0]const u8 = null,
+    queue_label_count: u32,
+    p_queue_labels: ?[*]const DebugUtilsLabel = null,
+    cmd_buf_label_count: u32,
+    p_cmd_buf_labels: ?[*]const DebugUtilsLabel = null,
+    object_count: u32,
+    p_objects: [*]const DebugUtilsObjectNameInfo,
+};
+
+pub const DebugUtilsLabel = extern struct {
+    s_type: StructureType = .debug_utils_label_ext,
+    p_next: ?*const anyopaque = null,
+    p_label_name: [*:0]const u8,
+    color: [4]f32,
+};
+
+pub const DebugUtilsObjectNameInfo = extern struct {
+    s_type: StructureType = .debug_utils_object_name_info_ext,
+    p_next: ?*const anyopaque = null,
+    object_type: ObjectType,
+    object_handle: u64,
+    p_object_name: ?[*:0]const u8 = null,
+};
+
+pub const InstanceCreateFlagBits = enum(u32) {
     enumerate_portability_bit_khr = 0x00000001,
-    flag_bits_max_enum = 0x7FFFFFFF,
+};
+
+pub const DebugUtilsMessageSeverityFlagBits = enum(u32) {
+    verbose_bit_ext = 0x00000001,
+    info_bit_ext = 0x00000010,
+    warning_bit_ext = 0x00000100,
+    error_bit_ext = 0x00001000,
+};
+
+pub const DebugUtilsMessageTypeFlagBits = enum(u32) {
+    general_bit_ext = 0x00000001,
+    validation_bit_ext = 0x00000002,
+    performance_bit_ext = 0x00000004,
+    device_address_binding_bit_ext = 0x00000008,
 };
 
 pub const Result = enum(i32) {
@@ -255,7 +339,6 @@ pub const Result = enum(i32) {
     incompatible_shader_binary_ext = 1000482000,
     pipeline_binary_missing_khr = 1000483000,
     error_not_enough_space_khr = -1000483000,
-    result_max_enum = 0x7FFFFFFF,
 };
 
 pub const StructureType = enum(u32) {
@@ -1361,30 +1444,91 @@ pub const StructureType = enum(u32) {
     physical_device_zero_initialize_device_memory_features_ext = 1000620000,
     physical_device_present_mode_fifo_latest_ready_features_khr = 1000361000,
     physical_device_pipeline_cache_incremental_mode_features_sec = 1000637000,
-    max_enum = 0x7FFFFFFF,
+};
+
+pub const ObjectType = enum(u32) {
+    unknown = 0,
+    instance = 1,
+    physical_device = 2,
+    device = 3,
+    queue = 4,
+    semaphore = 5,
+    command_buffer = 6,
+    fence = 7,
+    device_memory = 8,
+    buffer = 9,
+    image = 10,
+    event = 11,
+    query_pool = 12,
+    buffer_view = 13,
+    image_view = 14,
+    shader_module = 15,
+    pipeline_cache = 16,
+    pipeline_layout = 17,
+    render_pass = 18,
+    pipeline = 19,
+    descriptor_set_layout = 20,
+    sampler = 21,
+    descriptor_pool = 22,
+    descriptor_set = 23,
+    framebuffer = 24,
+    command_pool = 25,
+    descriptor_update_template = 1000085000,
+    sampler_ycbcr_conversion = 1000156000,
+    private_data_slot = 1000295000,
+    surface_khr = 1000000000,
+    swapchain_khr = 1000001000,
+    display_khr = 1000002000,
+    display_mode_khr = 1000002001,
+    debug_report_callback_ext = 1000011000,
+    video_session_khr = 1000023000,
+    video_session_parameters_khr = 1000023001,
+    cu_module_nvx = 1000029000,
+    cu_function_nvx = 1000029001,
+    debug_utils_messenger_ext = 1000128000,
+    acceleration_structure_khr = 1000150000,
+    validation_cache_ext = 1000160000,
+    acceleration_structure_nv = 1000165000,
+    performance_configuration_intel = 1000210000,
+    deferred_operation_khr = 1000268000,
+    indirect_commands_layout_nv = 1000277000,
+    cuda_module_nv = 1000307000,
+    cuda_function_nv = 1000307001,
+    buffer_collection_fuchsia = 1000366000,
+    micromap_ext = 1000396000,
+    tensor_arm = 1000460000,
+    tensor_view_arm = 1000460001,
+    optical_flow_session_nv = 1000464000,
+    shader_ext = 1000482000,
+    pipeline_binary_khr = 1000483000,
+    data_graph_pipeline_session_arm = 1000507000,
+    external_compute_queue_nv = 1000556000,
+    indirect_commands_layout_ext = 1000572000,
+    indirect_execution_set_ext = 1000572001,
 };
 
 pub const Instance = ?*opaque {};
 pub const AllocationCallbacks = ?*opaque {};
+pub const DebugUtilsMessenger = ?*opaque {};
 
 extern "vulkan-1" fn vkCreateInstance(
     pCreateInfo: *const InstanceCreateInfo,
     pAllocator: ?*const AllocationCallbacks,
     pInstance: *Instance,
-) callconv(.c) Result;
+) callconv(api_call) Result;
 
 extern "vulkan-1" fn vkDestroyInstance(
     instance: Instance,
     pAllocator: ?*const AllocationCallbacks,
-) callconv(.c) void;
+) callconv(api_call) void;
 
 extern "vulkan-1" fn vkEnumerateInstanceExtensionProperties(
     pLayerName: ?[*:0]const u8,
     pPropertyCount: *u32,
     pProperties: ?[*]ExtensionProperties,
-) callconv(.c) Result;
+) callconv(api_call) Result;
 
 extern "vulkan-1" fn vkEnumerateInstanceLayerProperties(
     pPropertyCount: *u32,
     pProperties: ?[*]LayerProperties,
-) callconv(.c) Result;
+) callconv(api_call) Result;
