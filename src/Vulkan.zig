@@ -7,6 +7,7 @@ const Self = @This();
 instance: c.VkInstance = null,
 debug_messenger: c.VkDebugUtilsMessengerEXT = null,
 physical_device: c.VkPhysicalDevice = null,
+device: c.VkDevice = null,
 
 pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
     var vk = try allocator.create(Self);
@@ -20,6 +21,8 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
     }
 
     try vk.pickPhysicalDevice(allocator);
+
+    try vk.createLogicalDevice();
 
     return vk;
 }
@@ -176,6 +179,7 @@ fn createInstance(self: *Self, allocator: std.mem.Allocator, config: Config) !vo
 
 fn pickPhysicalDevice(self: *Self, allocator: std.mem.Allocator) !void {
     var available_device_count: u32 = 0;
+
     switch (c.vkEnumeratePhysicalDevices(
         self.instance,
         &available_device_count,
@@ -193,6 +197,7 @@ fn pickPhysicalDevice(self: *Self, allocator: std.mem.Allocator) !void {
         available_device_count,
     );
     defer allocator.free(available_devices);
+
     switch (c.vkEnumeratePhysicalDevices(
         self.instance,
         &available_device_count,
@@ -210,6 +215,7 @@ fn pickPhysicalDevice(self: *Self, allocator: std.mem.Allocator) !void {
 
     const found_suitable_gpu = for (available_devices) |d| {
         var queue_family_property_count: u32 = 0;
+
         c.vkGetPhysicalDeviceQueueFamilyProperties2(
             d,
             &queue_family_property_count,
@@ -238,6 +244,7 @@ fn pickPhysicalDevice(self: *Self, allocator: std.mem.Allocator) !void {
         var device: c.VkPhysicalDeviceProperties2 = .{
             .sType = c.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
         };
+
         c.vkGetPhysicalDeviceProperties2(
             d,
             &device,
@@ -256,6 +263,7 @@ fn pickPhysicalDevice(self: *Self, allocator: std.mem.Allocator) !void {
         is_suitable = is_suitable and supports_graphics;
 
         var device_extension_property_count: u32 = 0;
+
         switch (c.vkEnumerateDeviceExtensionProperties(
             d,
             null,
@@ -351,6 +359,47 @@ fn setupDebugMessenger(self: *Self) !void {
         c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
         else => return error.Unknown,
     }
+}
+
+fn createLogicalDevice(self: *Self) !void {
+    _ = self;
+}
+
+fn findGraphicsQueueFamily(allocator: std.mem.Allocator, physical_device: c.VkPhysicalDevice) usize {
+    var queue_family_property_count: u32 = 0;
+
+    c.vkGetPhysicalDeviceQueueFamilyProperties2(
+        physical_device,
+        &queue_family_property_count,
+        null,
+    );
+
+    var queue_families = try allocator.alloc(
+        c.VkQueueFamilyProperties2,
+        queue_family_property_count,
+    );
+    defer allocator.free(queue_families);
+
+    for (queue_families) |*props| {
+        props.* = .{
+            .sType = c.VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2,
+            .queueFamilyProperties = undefined,
+        };
+    }
+
+    c.vkGetPhysicalDeviceQueueFamilyProperties2(
+        physical_device,
+        &queue_family_property_count,
+        queue_families.ptr,
+    );
+
+    return for (queue_families, 0..) |q, i| {
+        if ((q.queueFamilyProperties.queueFlags &
+            c.VK_QUEUE_GRAPHICS_BIT) != 0)
+        {
+            break i;
+        }
+    } else -1;
 }
 
 fn debugCallback(

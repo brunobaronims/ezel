@@ -14,18 +14,23 @@ pub fn build(b: *std.Build) void {
     });
     
     const vk = b.addTranslateC(.{
-        .root_source_file = .{ .cwd_relative = "/mnt/c/VulkanSDK/1.4.328.1/Include/vulkan/vulkan_core.h" },
+        .root_source_file = .{ .cwd_relative = "/c/VulkanSDK/1.4.328.1/Include/vulkan/vulkan_core.h" },
         .target = target,
         .optimize = optimize,
     });
-    vk.addIncludePath(.{ .cwd_relative = "/mnt/c/VulkanSDK/1.4.328.1/Include" });
     const vk_mod = vk.createModule();
 
+    const win_user = b.addTranslateC(.{
+        .root_source_file = .{ .cwd_relative = "/c/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/um/WinUser.h" },
+        .target = target,
+        .optimize = optimize,
+    });
+    const win_user_mod = win_user.createModule();
+
+    exe.root_module.addImport("win_user", win_user_mod);
     exe.root_module.addImport("vulkan_c", vk_mod);
-    exe.addLibraryPath(.{ .cwd_relative = "/mnt/c/VulkanSDK/1.4.328.1/Lib" });
+    exe.addLibraryPath(.{ .cwd_relative = "/c/VulkanSDK/1.4.328.1/Lib" });
     exe.linkSystemLibrary("user32");
-    exe.linkSystemLibrary("d2d1");
-    exe.linkSystemLibrary("ole32");
     exe.linkSystemLibrary("vulkan-1");
 
     b.installArtifact(exe);
