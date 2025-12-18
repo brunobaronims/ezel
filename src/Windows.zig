@@ -1,5 +1,6 @@
 const std = @import("std");
 const Vulkan = @import("Vulkan.zig");
+const c = @import("win_user");
 const windows = std.os.windows;
 
 const Self = @This();

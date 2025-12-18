@@ -1,7 +1,13 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = .{
+            .cpu_arch = .x86_64,
+            .os_tag = .windows,
+            .abi = .gnu,
+        },
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     const exe = b.addExecutable(.{
@@ -10,26 +16,29 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = optimize,
+            .link_libc = true,
         }),
     });
-    
+
     const vk = b.addTranslateC(.{
-        .root_source_file = .{ .cwd_relative = "/c/VulkanSDK/1.4.328.1/Include/vulkan/vulkan_core.h" },
+        .root_source_file = .{ .cwd_relative = "/mnt/c/VulkanSDK/1.4.328.1/Include/vulkan/vulkan_core.h" },
         .target = target,
         .optimize = optimize,
     });
+    vk.addIncludePath(.{ .cwd_relative = "/mnt/c/VulkanSDK/1.4.328.1/Include" });
     const vk_mod = vk.createModule();
 
     const win_user = b.addTranslateC(.{
-        .root_source_file = .{ .cwd_relative = "/c/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/um/WinUser.h" },
+        .root_source_file = .{ .cwd_relative = "/mnt/c/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/um/Windows.h" },
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
     });
     const win_user_mod = win_user.createModule();
 
     exe.root_module.addImport("win_user", win_user_mod);
     exe.root_module.addImport("vulkan_c", vk_mod);
-    exe.addLibraryPath(.{ .cwd_relative = "/c/VulkanSDK/1.4.328.1/Lib" });
+    exe.addLibraryPath(.{ .cwd_relative = "/mnt/c/VulkanSDK/1.4.328.1/Lib" });
     exe.linkSystemLibrary("user32");
     exe.linkSystemLibrary("vulkan-1");
 
