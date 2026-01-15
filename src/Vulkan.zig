@@ -8,6 +8,7 @@ instance: c.VkInstance = null,
 debug_messenger: c.VkDebugUtilsMessengerEXT = null,
 physical_device: c.VkPhysicalDevice = null,
 device: c.VkDevice = null,
+graphics_queue: c.VkQueue = null,
 
 pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
     var vk = try allocator.create(Self);
@@ -22,7 +23,7 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
 
     try vk.pickPhysicalDevice(allocator);
 
-    try vk.createLogicalDevice();
+    try vk.createLogicalDevice(allocator);
 
     return vk;
 }
@@ -39,6 +40,7 @@ pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
         DestroyDebugMessenger.?(self.instance, messenger, null);
     }
 
+    c.vkDestroyDevice(self.device, null);
     c.vkDestroyInstance(self.instance, null);
     allocator.destroy(self);
 }
@@ -361,11 +363,71 @@ fn setupDebugMessenger(self: *Self) !void {
     }
 }
 
-fn createLogicalDevice(self: *Self) !void {
-    _ = self;
+fn createLogicalDevice(self: *Self, allocator: std.mem.Allocator) !void {
+    const index = try findGraphicsQueueFamily(allocator, self.physical_device);
+    if (index == -1) {
+        return error.NoGraphicsQueueFamily;
+    }
+    const priority: f32 = 0.5;
+
+    const device_queue_create_info: c.VkDeviceQueueCreateInfo = .{
+        .sType = c.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        .queueFamilyIndex = @intCast(index),
+        .pQueuePriorities = &priority,
+        .queueCount = 1,
+    };
+
+    var dynamic_state_features: c
+        .VkPhysicalDeviceExtendedDynamicStateFeaturesEXT = .{
+        .sType = c
+            .VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT,
+        .extendedDynamicState = 1,
+    };
+    var vulkan_13_features: c.VkPhysicalDeviceVulkan13Features = .{
+        .sType = c.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+        .dynamicRendering = 1,
+        .pNext = @ptrCast(&dynamic_state_features),
+    };
+    var device_features: c.VkPhysicalDeviceFeatures2 = .{
+        .sType = c.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+        .pNext = @ptrCast(&vulkan_13_features),
+    };
+
+    const device_create_info: c.VkDeviceCreateInfo = .{
+        .sType = c.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        .pNext = @ptrCast(&device_features),
+        .queueCreateInfoCount = 1,
+        .pQueueCreateInfos = &device_queue_create_info,
+        .enabledExtensionCount = @intCast(device_extensions.len),
+        .ppEnabledExtensionNames = &device_extensions,
+    };
+
+    switch (c.vkCreateDevice(
+        self.physical_device,
+        &device_create_info,
+        null,
+        &self.device,
+    )) {
+        c.VK_SUCCESS => {},
+        c.VK_ERROR_DEVICE_LOST => return error.DeviceLost,
+        c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
+        c.VK_ERROR_EXTENSION_NOT_PRESENT => return error.ExtensionNotPresent,
+        c.VK_ERROR_FEATURE_NOT_PRESENT => return error.FeatureNotPresent,
+        c.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
+        c.VK_ERROR_TOO_MANY_OBJECTS => return error.TooManyObjects,
+        c.VK_ERROR_VALIDATION_FAILED => return error.ValidationFailed,
+        else => return error.Unknown,
+    }
+
+    c.vkGetDeviceQueue(
+        self.device,
+        @intCast(index),
+        0,
+        &self.graphics_queue,
+    );
 }
 
-fn findGraphicsQueueFamily(allocator: std.mem.Allocator, physical_device: c.VkPhysicalDevice) usize {
+fn findGraphicsQueueFamily(allocator: std.mem.Allocator, physical_device: c.VkPhysicalDevice) !isize {
     var queue_family_property_count: u32 = 0;
 
     c.vkGetPhysicalDeviceQueueFamilyProperties2(
@@ -397,7 +459,7 @@ fn findGraphicsQueueFamily(allocator: std.mem.Allocator, physical_device: c.VkPh
         if ((q.queueFamilyProperties.queueFlags &
             c.VK_QUEUE_GRAPHICS_BIT) != 0)
         {
-            break i;
+            break @intCast(i);
         }
     } else -1;
 }
