@@ -1,17 +1,19 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const c = @import("vulkan_c");
+const Windows = @import("Windows.zig");
 
-const Self = @This();
+const Vulkan = @This();
 
 instance: c.VkInstance = null,
 debug_messenger: c.VkDebugUtilsMessengerEXT = null,
 physical_device: c.VkPhysicalDevice = null,
 device: c.VkDevice = null,
 graphics_queue: c.VkQueue = null,
+surface: c.VkSurfaceKHR = null,
 
-pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
-    var vk = try allocator.create(Self);
+pub fn init(allocator: std.mem.Allocator, config: Config) !*Vulkan {
+    var vk = try allocator.create(Vulkan);
     errdefer allocator.destroy(vk);
 
     try vk.createInstance(allocator, config);
@@ -28,24 +30,43 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !*Self {
     return vk;
 }
 
-pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
-    if (self.debug_messenger) |messenger| {
+pub fn deinit(vulkan: *Vulkan, allocator: std.mem.Allocator) void {
+    if (vulkan.debug_messenger) |messenger| {
         const DestroyDebugMessenger: c.PFN_vkDestroyDebugUtilsMessengerEXT =
             @ptrCast(
                 c.vkGetInstanceProcAddr(
-                    self.instance,
+                    vulkan.instance,
                     "vkDestroyDebugUtilsMessengerEXT",
                 ),
             );
-        DestroyDebugMessenger.?(self.instance, messenger, null);
+        DestroyDebugMessenger.?(vulkan.instance, messenger, null);
     }
 
-    c.vkDestroyDevice(self.device, null);
-    c.vkDestroyInstance(self.instance, null);
-    allocator.destroy(self);
+    c.vkDestroyDevice(vulkan.device, null);
+    c.vkDestroySurfaceKHR(vulkan.instance, vulkan.surface, null);
+    c.vkDestroyInstance(vulkan.instance, null);
+    allocator.destroy(vulkan);
 }
 
-fn createInstance(self: *Self, allocator: std.mem.Allocator, config: Config) !void {
+pub fn createWindowsSurface(vulkan: *Vulkan, windows: *Windows) !void {
+    const surface_create_info: c.VkWin32SurfaceCreateInfoKHR = .{
+        .sType = c.VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
+        .hwnd = @ptrCast(windows.hwnd),
+        .hinstance = @ptrCast(windows.hinstance),
+    };
+
+    switch (c.vkCreateWin32SurfaceKHR(
+        vulkan.instance,
+        &surface_create_info,
+        null,
+        &vulkan.surface,
+    )) {
+        c.VK_SUCCESS => {},
+        else => |err| return try handleVulkanError(err),
+    }
+}
+
+fn createInstance(vulkan: *Vulkan, allocator: std.mem.Allocator, config: Config) !void {
     var required_extensions = config.required_extensions;
     var required_layers = config.required_layers;
     if (config.debug) {
@@ -68,9 +89,7 @@ fn createInstance(self: *Self, allocator: std.mem.Allocator, config: Config) !vo
         null,
     )) {
         c.VK_SUCCESS, c.VK_INCOMPLETE => {},
-        c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
-        c.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
-        else => return error.Unknown,
+        else => |err| return try handleVulkanError(err),
     }
 
     switch (c.vkEnumerateInstanceLayerProperties(
@@ -78,9 +97,7 @@ fn createInstance(self: *Self, allocator: std.mem.Allocator, config: Config) !vo
         null,
     )) {
         c.VK_SUCCESS, c.VK_INCOMPLETE => {},
-        c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
-        c.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
-        else => return error.Unknown,
+        else => |err| return try handleVulkanError(err),
     }
 
     var available_extensions_properties = try allocator.alloc(
@@ -104,9 +121,7 @@ fn createInstance(self: *Self, allocator: std.mem.Allocator, config: Config) !vo
         c.VK_INCOMPLETE => {
             std.log.warn("Unable to retrieve all extension properties", .{});
         },
-        c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
-        c.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
-        else => return error.Unknown,
+        else => |err| return try handleVulkanError(err),
     }
 
     switch (c.vkEnumerateInstanceLayerProperties(
@@ -117,9 +132,7 @@ fn createInstance(self: *Self, allocator: std.mem.Allocator, config: Config) !vo
         c.VK_INCOMPLETE => {
             std.log.warn("Unable to retrieve all layer properties", .{});
         },
-        c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
-        c.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
-        else => return error.Unknown,
+        else => |err| return try handleVulkanError(err),
     }
 
     for (required_extensions.items) |e| {
@@ -167,31 +180,22 @@ fn createInstance(self: *Self, allocator: std.mem.Allocator, config: Config) !vo
         .flags = 0,
     };
 
-    switch (c.vkCreateInstance(&instance_create_info, null, &self.instance)) {
+    switch (c.vkCreateInstance(&instance_create_info, null, &vulkan.instance)) {
         c.VK_SUCCESS => {},
-        c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
-        c.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
-        c.VK_ERROR_INITIALIZATION_FAILED => return error.InitializationFailed,
-        c.VK_ERROR_LAYER_NOT_PRESENT => return error.LayerNotPresent,
-        c.VK_ERROR_EXTENSION_NOT_PRESENT => return error.ExtensionNotPresent,
-        c.VK_ERROR_INCOMPATIBLE_DRIVER => return error.IncompatibleDriver,
-        else => return error.Unknown,
+        else => |err| return try handleVulkanError(err),
     }
 }
 
-fn pickPhysicalDevice(self: *Self, allocator: std.mem.Allocator) !void {
+fn pickPhysicalDevice(vulkan: *Vulkan, allocator: std.mem.Allocator) !void {
     var available_device_count: u32 = 0;
 
     switch (c.vkEnumeratePhysicalDevices(
-        self.instance,
+        vulkan.instance,
         &available_device_count,
         null,
     )) {
         c.VK_SUCCESS, c.VK_INCOMPLETE => {},
-        c.VK_ERROR_INITIALIZATION_FAILED => return error.InitializationFailed,
-        c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
-        c.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
-        else => return error.Unknown,
+        else => |err| return try handleVulkanError(err),
     }
 
     var available_devices = try allocator.alloc(
@@ -201,7 +205,7 @@ fn pickPhysicalDevice(self: *Self, allocator: std.mem.Allocator) !void {
     defer allocator.free(available_devices);
 
     switch (c.vkEnumeratePhysicalDevices(
-        self.instance,
+        vulkan.instance,
         &available_device_count,
         available_devices.ptr,
     )) {
@@ -209,10 +213,7 @@ fn pickPhysicalDevice(self: *Self, allocator: std.mem.Allocator) !void {
         c.VK_INCOMPLETE => {
             std.log.warn("Unable to retrieve all physical devices", .{});
         },
-        c.VK_ERROR_INITIALIZATION_FAILED => return error.InitializationFailed,
-        c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
-        c.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
-        else => return error.Unknown,
+        else => |err| return try handleVulkanError(err),
     }
 
     const found_suitable_gpu = for (available_devices) |d| {
@@ -273,9 +274,7 @@ fn pickPhysicalDevice(self: *Self, allocator: std.mem.Allocator) !void {
             null,
         )) {
             c.VK_SUCCESS, c.VK_INCOMPLETE => {},
-            c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
-            c.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
-            else => return error.Unknown,
+            else => |err| return try handleVulkanError(err),
         }
 
         var available_extension_properties = try allocator.alloc(
@@ -294,9 +293,7 @@ fn pickPhysicalDevice(self: *Self, allocator: std.mem.Allocator) !void {
             c.VK_INCOMPLETE => {
                 std.log.warn("Unable to retrieve all physical devices", .{});
             },
-            c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
-            c.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
-            else => return error.Unknown,
+            else => |err| return try handleVulkanError(err),
         }
 
         var found = std.bit_set.StaticBitSet(device_extensions.len).initEmpty();
@@ -314,7 +311,7 @@ fn pickPhysicalDevice(self: *Self, allocator: std.mem.Allocator) !void {
         is_suitable = is_suitable and (found.count() == device_extensions.len);
 
         if (is_suitable) {
-            self.physical_device = d;
+            vulkan.physical_device = d;
             break is_suitable;
         }
     } else false;
@@ -324,7 +321,7 @@ fn pickPhysicalDevice(self: *Self, allocator: std.mem.Allocator) !void {
     }
 }
 
-fn setupDebugMessenger(self: *Self) !void {
+fn setupDebugMessenger(vulkan: *Vulkan) !void {
     const severity_flags =
         c.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT |
         c.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
@@ -345,26 +342,25 @@ fn setupDebugMessenger(self: *Self) !void {
     const CreateDebugMessenger: c.PFN_vkCreateDebugUtilsMessengerEXT =
         @ptrCast(
             c.vkGetInstanceProcAddr(
-                self.instance,
+                vulkan.instance,
                 "vkCreateDebugUtilsMessengerEXT",
             ),
         );
     if (CreateDebugMessenger == null) return error.ExtensionNotPresent;
 
     switch (CreateDebugMessenger.?(
-        self.instance,
+        vulkan.instance,
         &messenger_create_info,
         null,
-        &self.debug_messenger,
+        &vulkan.debug_messenger,
     )) {
         c.VK_SUCCESS => {},
-        c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
-        else => return error.Unknown,
+        else => |err| return try handleVulkanError(err),
     }
 }
 
-fn createLogicalDevice(self: *Self, allocator: std.mem.Allocator) !void {
-    const index = try findGraphicsQueueFamily(allocator, self.physical_device);
+fn createLogicalDevice(vulkan: *Vulkan, allocator: std.mem.Allocator) !void {
+    const index = try findGraphicsQueueFamily(allocator, vulkan.physical_device);
     if (index == -1) {
         return error.NoGraphicsQueueFamily;
     }
@@ -403,27 +399,20 @@ fn createLogicalDevice(self: *Self, allocator: std.mem.Allocator) !void {
     };
 
     switch (c.vkCreateDevice(
-        self.physical_device,
+        vulkan.physical_device,
         &device_create_info,
         null,
-        &self.device,
+        &vulkan.device,
     )) {
         c.VK_SUCCESS => {},
-        c.VK_ERROR_DEVICE_LOST => return error.DeviceLost,
-        c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
-        c.VK_ERROR_EXTENSION_NOT_PRESENT => return error.ExtensionNotPresent,
-        c.VK_ERROR_FEATURE_NOT_PRESENT => return error.FeatureNotPresent,
-        c.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
-        c.VK_ERROR_TOO_MANY_OBJECTS => return error.TooManyObjects,
-        c.VK_ERROR_VALIDATION_FAILED => return error.ValidationFailed,
-        else => return error.Unknown,
+        else => |err| return try handleVulkanError(err),
     }
 
     c.vkGetDeviceQueue(
-        self.device,
+        vulkan.device,
         @intCast(index),
         0,
-        &self.graphics_queue,
+        &vulkan.graphics_queue,
     );
 }
 
@@ -483,6 +472,56 @@ fn debugCallback(
     }
 
     return 0;
+}
+
+inline fn handleVulkanError(result: c.VkResult) !void {
+    switch (result) {
+        c.VK_SUCCESS, c.VK_NOT_READY, c.VK_TIMEOUT, c.VK_EVENT_SET, c.VK_EVENT_RESET, c.VK_INCOMPLETE => {},
+        c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
+        c.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
+        c.VK_ERROR_INITIALIZATION_FAILED => return error.InitializationFailed,
+        c.VK_ERROR_DEVICE_LOST => return error.DeviceLost,
+        c.VK_ERROR_MEMORY_MAP_FAILED => return error.MemoryMapFailed,
+        c.VK_ERROR_LAYER_NOT_PRESENT => return error.LayerNotPresent,
+        c.VK_ERROR_EXTENSION_NOT_PRESENT => return error.ExtensionNotPresent,
+        c.VK_ERROR_FEATURE_NOT_PRESENT => return error.FeatureNotPresent,
+        c.VK_ERROR_INCOMPATIBLE_DRIVER => return error.IncompatibleDriver,
+        c.VK_ERROR_TOO_MANY_OBJECTS => return error.TooManyObjects,
+        c.VK_ERROR_FORMAT_NOT_SUPPORTED => return error.FormatNotSupported,
+        c.VK_ERROR_FRAGMENTED_POOL => return error.FragmentedPool,
+        c.VK_ERROR_UNKNOWN => return error.Unknown,
+        c.VK_ERROR_VALIDATION_FAILED => return error.ValidationFailed,
+        c.VK_ERROR_OUT_OF_POOL_MEMORY => return error.OutOfPoolMemory,
+        c.VK_ERROR_INVALID_EXTERNAL_HANDLE => return error.InvalidExternalHandle,
+        c.VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS => return error.InvalidOpaqueCaptureAddress,
+        c.VK_ERROR_FRAGMENTATION => return error.Fragmentation,
+        c.VK_PIPELINE_COMPILE_REQUIRED => return error.PipelineCompileRequired,
+        c.VK_ERROR_NOT_PERMITTED => return error.NotPermitted,
+        c.VK_ERROR_SURFACE_LOST_KHR => return error.SurfaceLostKhr,
+        c.VK_ERROR_NATIVE_WINDOW_IN_USE_KHR => return error.NativeWindowInUseKhr,
+        c.VK_SUBOPTIMAL_KHR => return error.SuboptimalKhr,
+        c.VK_ERROR_OUT_OF_DATE_KHR => return error.OutOfDateKhr,
+        c.VK_ERROR_INCOMPATIBLE_DISPLAY_KHR => return error.IncompatibleDisplayKhr,
+        c.VK_ERROR_INVALID_SHADER_NV => return error.InvalidShaderNv,
+        c.VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR => return error.ImageUsageNotSupportedKhr,
+        c.VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR => return error.VideoPictureLayoutNotSupportedKhr,
+        c.VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR => return error.VideoProfileOperationNotSupportedKhr,
+        c.VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR => return error.VideoProfileFormatNotSupportedKhr,
+        c.VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR => return error.VideoProfileCodecNotSupportedKhr,
+        c.VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR => return error.VideoStdVersionNotSupportedKhr,
+        c.VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT => return error.InvalidDrmFormatModifierPlaneLayoutExt,
+        c.VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT => return error.FullScreenExclusiveModeLostExt,
+        c.VK_THREAD_IDLE_KHR => return error.ThreadIdleKhr,
+        c.VK_THREAD_DONE_KHR => return error.ThreadDoneKhr,
+        c.VK_OPERATION_DEFERRED_KHR => return error.OperationDeferredKhr,
+        c.VK_OPERATION_NOT_DEFERRED_KHR => return error.OperationNotDeferredKhr,
+        c.VK_ERROR_INVALID_VIDEO_STD_PARAMETERS_KHR => return error.InvalidVideoStdParametersKhr,
+        c.VK_ERROR_COMPRESSION_EXHAUSTED_EXT => return error.CompressionExhaustedExt,
+        c.VK_INCOMPATIBLE_SHADER_BINARY_EXT => return error.IncompatibleShaderBinaryExt,
+        c.VK_PIPELINE_BINARY_MISSING_KHR => return error.PipelineBinaryMissingKhr,
+        c.VK_ERROR_NOT_ENOUGH_SPACE_KHR => return error.NotEnoughSpaceKhr,
+        else => return error.Unknown,
+    }
 }
 
 const VKAPI_CALL = if (builtin.os.tag == .windows)

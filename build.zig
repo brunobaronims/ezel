@@ -20,11 +20,12 @@ pub fn build(b: *std.Build) void {
     });
 
     const vk = b.addTranslateC(.{
-        .root_source_file = .{ .cwd_relative = "/mnt/c/VulkanSDK/1.4.328.1/Include/vulkan/vulkan_core.h" },
+        .root_source_file = .{ .cwd_relative = "/mnt/c/VulkanSDK/1.4.328.1/Include/vulkan/vulkan.h" },
         .target = target,
         .optimize = optimize,
     });
     vk.addIncludePath(.{ .cwd_relative = "/mnt/c/VulkanSDK/1.4.328.1/Include" });
+    vk.defineCMacro("VK_USE_PLATFORM_WIN32_KHR", null);
     const vk_mod = vk.createModule();
 
     const win_user = b.addTranslateC(.{

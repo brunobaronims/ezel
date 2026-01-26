@@ -1,37 +1,40 @@
 const std = @import("std");
 const Vulkan = @import("Vulkan.zig");
 const c = @import("win_user");
-const windows = std.os.windows;
 
-const Self = @This();
+const Windows = @This();
 
 vk: *Vulkan,
 hwnd: c.HWND,
+hinstance: c.HINSTANCE,
 dpiX: c.FLOAT = 0,
 dpiY: c.FLOAT = 0,
 
-pub fn init(allocator: std.mem.Allocator, vk: *Vulkan) !*Self {
-    var window = try allocator.create(Self);
-    errdefer allocator.destroy(window);
+pub fn init(allocator: std.mem.Allocator, vk: *Vulkan) !*Windows {
+    var windows = try allocator.create(Windows);
+    errdefer allocator.destroy(windows);
 
-    const h_module = c.GetModuleHandleW(null) orelse {
+    const hmodule = c.GetModuleHandleW(null) orelse {
         return error.InitFailed;
     };
-    const h_instance: c.HINSTANCE = @ptrCast(h_module);
+    const hinstance: c.HINSTANCE = @ptrCast(hmodule);
 
-    window.hwnd = try NewHwnd(h_instance, window);
-    window.vk = vk;
+    try vk.createWindowsSurface(windows);
 
-    return window;
+    windows.hinstance = hinstance;
+    windows.hwnd = try NewHwnd(hinstance, windows);
+    windows.vk = vk;
+
+    return windows;
 }
 
-pub fn drawRectangle(self: *Self) !void {
+pub fn drawRectangle(self: *Windows) !void {
     _ = self; 
 
     return error.NotImplemented;
 }
 
-pub fn run(self: *Self) void {
+pub fn run(self: *Windows) void {
     _ = self;
 
     var msg: c.MSG = undefined;
@@ -41,11 +44,11 @@ pub fn run(self: *Self) void {
     }
 }
 
-pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
+pub fn deinit(self: *Windows, allocator: std.mem.Allocator) void {
     self.vk.deinit(allocator);
 }
 
-pub fn NewHwnd(h_instance: c.HINSTANCE, window: *Self) !c.HWND {
+pub fn NewHwnd(hinstance: c.HINSTANCE, window: *Windows) !c.HWND {
     const class_name = std.unicode.utf8ToUtf16LeStringLiteral("ezel");
     const window_title = std.unicode.utf8ToUtf16LeStringLiteral("ezel");
     const cursor = @as(c.LPCWSTR, @ptrFromInt(32512));
@@ -55,7 +58,7 @@ pub fn NewHwnd(h_instance: c.HINSTANCE, window: *Self) !c.HWND {
         .style = c.CS_HREDRAW | c.CS_VREDRAW,
         .lpfnWndProc = windowProc,
         .cbWndExtra = @sizeOf(c.LONG_PTR),
-        .hInstance = h_instance,
+        .hInstance = hinstance,
         .lpszClassName = class_name,
         .hCursor = c.LoadCursorW(null, cursor),
     };
@@ -82,7 +85,7 @@ pub fn NewHwnd(h_instance: c.HINSTANCE, window: *Self) !c.HWND {
         c.CW_USEDEFAULT,
         null,
         null,
-        h_instance,
+        hinstance,
         window,
     ) orelse {
         std.log.err(
@@ -137,7 +140,7 @@ fn windowProc(
 ) callconv(.winapi) c.LRESULT {
     if (uMsg == c.WM_CREATE) {
         const pcs: *c.CREATESTRUCTW = @ptrFromInt(@as(usize, @bitCast(lParam)));
-        const window: *Self = @ptrCast(@alignCast(pcs.lpCreateParams));
+        const window: *Windows = @ptrCast(@alignCast(pcs.lpCreateParams));
 
         _ = c.SetLastError(0);
         const result = c.SetWindowLongPtrW(
@@ -154,7 +157,7 @@ fn windowProc(
     }
 
     const p = c.GetWindowLongPtrW(hwnd, c.GWLP_USERDATA);
-    const window: ?*Self = if (p != 0)
+    const window: ?*Windows = if (p != 0)
         @ptrFromInt(@as(usize, @intCast(p)))
     else
         null;
