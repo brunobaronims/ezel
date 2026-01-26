@@ -11,14 +11,19 @@ debug_messenger: c.VkDebugUtilsMessengerEXT = null,
 physical_device: c.VkPhysicalDevice = null,
 device: c.VkDevice = null,
 graphics_queue: c.VkQueue = null,
+present_queue: c.VkQueue = null,
 surface: c.VkSurfaceKHR = null,
 
-pub fn init(allocator: std.mem.Allocator, config: Config, platform: *Platform) !void {
+pub fn init(
+    allocator: std.mem.Allocator,
+    config: Config,
+    platform: *Platform,
+) !void {
     var vk = try allocator.create(Vulkan);
     errdefer allocator.destroy(vk);
 
     try vk.createInstance(allocator, config);
-    errdefer c.vkDestroyInstance(vk.instance, null);
+    errdefer vk.deinit(allocator);
 
     if (config.debug) {
         try vk.setupDebugMessenger();
@@ -48,9 +53,17 @@ pub fn deinit(vulkan: *Vulkan, allocator: std.mem.Allocator) void {
         DestroyDebugMessenger.?(vulkan.instance, messenger, null);
     }
 
-    c.vkDestroyDevice(vulkan.device, null);
-    c.vkDestroySurfaceKHR(vulkan.instance, vulkan.surface, null);
-    c.vkDestroyInstance(vulkan.instance, null);
+    if (vulkan.device) |device| {
+        c.vkDestroyDevice(device, null);
+    }
+
+    if (vulkan.surface) |surface| {
+        c.vkDestroySurfaceKHR(vulkan.instance, surface, null);
+    }
+
+    if (vulkan.instance) |instance| {
+        c.vkDestroyInstance(instance, null);
+    }
     allocator.destroy(vulkan);
 }
 
@@ -72,7 +85,11 @@ pub fn createWindowsSurface(vulkan: *Vulkan, windows: *Windows) !void {
     }
 }
 
-fn createInstance(vulkan: *Vulkan, allocator: std.mem.Allocator, config: Config) !void {
+fn createInstance(
+    vulkan: *Vulkan,
+    allocator: std.mem.Allocator,
+    config: Config,
+) !void {
     var required_extensions = config.required_extensions;
     var required_layers = config.required_layers;
     if (config.debug) {
@@ -366,15 +383,58 @@ fn setupDebugMessenger(vulkan: *Vulkan) !void {
 }
 
 fn createLogicalDevice(vulkan: *Vulkan, allocator: std.mem.Allocator) !void {
-    const index = try findGraphicsQueueFamily(allocator, vulkan.physical_device);
-    if (index == -1) {
-        return error.NoGraphicsQueueFamily;
+    const queue_families = try vulkan.getPhysicalDeviceQueueFamilies(allocator);
+    defer allocator.free(queue_families);
+
+    var graphics_index: u32 =
+        for (queue_families, 0..) |q, i| {
+            const supports_graphics =
+                (q.queueFamilyProperties.queueFlags &
+                    c.VK_QUEUE_GRAPHICS_BIT) != 0;
+
+            if (supports_graphics) {
+                break @intCast(i);
+            }
+        } else return error.NoGraphicsQueueFamilyFound;
+
+    var present_index: u32 =
+        if (try vulkan.getSurfaceSupport(graphics_index))
+            graphics_index
+        else
+            @truncate(queue_families.len);
+
+    if (present_index == queue_families.len) {
+        for (queue_families, 0..) |q, i| {
+            const supports_graphics =
+                (q.queueFamilyProperties.queueFlags &
+                    c.VK_QUEUE_GRAPHICS_BIT) != 0;
+            const supports_present = try vulkan.getSurfaceSupport(@truncate(i));
+
+            if (supports_graphics and supports_present) {
+                graphics_index = @truncate(i);
+                present_index = @truncate(i);
+                break;
+            }
+        }
+
+        if (present_index == queue_families.len) {
+            for (queue_families, 0..) |_, i| {
+                const supports_present = try vulkan
+                    .getSurfaceSupport(@truncate(i));
+
+                if (supports_present) {
+                    present_index = @truncate(i);
+                    break;
+                }
+            } else return error.NoPresentQueueFamilyFound;
+        }
     }
+
     const priority: f32 = 0.5;
 
     const device_queue_create_info: c.VkDeviceQueueCreateInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        .queueFamilyIndex = @intCast(index),
+        .queueFamilyIndex = @intCast(graphics_index),
         .pQueuePriorities = &priority,
         .queueCount = 1,
     };
@@ -416,17 +476,27 @@ fn createLogicalDevice(vulkan: *Vulkan, allocator: std.mem.Allocator) !void {
 
     c.vkGetDeviceQueue(
         vulkan.device,
-        @intCast(index),
+        graphics_index,
         0,
         &vulkan.graphics_queue,
     );
+
+    c.vkGetDeviceQueue(
+        vulkan.device,
+        present_index,
+        0,
+        &vulkan.present_queue,
+    );
 }
 
-fn findGraphicsQueueFamily(allocator: std.mem.Allocator, physical_device: c.VkPhysicalDevice) !isize {
+fn getPhysicalDeviceQueueFamilies(
+    vulkan: *Vulkan,
+    allocator: std.mem.Allocator,
+) ![]c.VkQueueFamilyProperties2 {
     var queue_family_property_count: u32 = 0;
 
     c.vkGetPhysicalDeviceQueueFamilyProperties2(
-        physical_device,
+        vulkan.physical_device,
         &queue_family_property_count,
         null,
     );
@@ -435,7 +505,6 @@ fn findGraphicsQueueFamily(allocator: std.mem.Allocator, physical_device: c.VkPh
         c.VkQueueFamilyProperties2,
         queue_family_property_count,
     );
-    defer allocator.free(queue_families);
 
     for (queue_families) |*props| {
         props.* = .{
@@ -445,18 +514,32 @@ fn findGraphicsQueueFamily(allocator: std.mem.Allocator, physical_device: c.VkPh
     }
 
     c.vkGetPhysicalDeviceQueueFamilyProperties2(
-        physical_device,
+        vulkan.physical_device,
         &queue_family_property_count,
         queue_families.ptr,
     );
 
-    return for (queue_families, 0..) |q, i| {
-        if ((q.queueFamilyProperties.queueFlags &
-            c.VK_QUEUE_GRAPHICS_BIT) != 0)
-        {
-            break @intCast(i);
-        }
-    } else -1;
+    return queue_families;
+}
+
+fn getSurfaceSupport(vulkan: *Vulkan, index: u32) !bool {
+    var has_surface_support: c.VkBool32 = c.VK_FALSE;
+
+    switch (c.vkGetPhysicalDeviceSurfaceSupportKHR(
+        vulkan.physical_device,
+        index,
+        vulkan.surface,
+        &has_surface_support,
+    )) {
+        c.VK_SUCCESS => {},
+        else => |err| try handleVulkanError(err),
+    }
+
+    if (has_surface_support == c.VK_TRUE) {
+        return true;
+    }
+
+    return false;
 }
 
 fn debugCallback(
@@ -482,7 +565,13 @@ fn debugCallback(
 
 inline fn handleVulkanError(result: c.VkResult) !void {
     switch (result) {
-        c.VK_SUCCESS, c.VK_NOT_READY, c.VK_TIMEOUT, c.VK_EVENT_SET, c.VK_EVENT_RESET, c.VK_INCOMPLETE => {},
+        c.VK_SUCCESS,
+        c.VK_NOT_READY,
+        c.VK_TIMEOUT,
+        c.VK_EVENT_SET,
+        c.VK_EVENT_RESET,
+        c.VK_INCOMPLETE,
+        => {},
         c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
         c.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
         c.VK_ERROR_INITIALIZATION_FAILED => return error.InitializationFailed,
