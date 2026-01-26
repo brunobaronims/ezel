@@ -10,7 +10,7 @@ hinstance: c.HINSTANCE,
 dpiX: c.FLOAT = 0,
 dpiY: c.FLOAT = 0,
 
-pub fn init(allocator: std.mem.Allocator, vk: *Vulkan) !*Windows {
+pub fn init(allocator: std.mem.Allocator) !*Windows {
     var windows = try allocator.create(Windows);
     errdefer allocator.destroy(windows);
 
@@ -19,11 +19,8 @@ pub fn init(allocator: std.mem.Allocator, vk: *Vulkan) !*Windows {
     };
     const hinstance: c.HINSTANCE = @ptrCast(hmodule);
 
-    try vk.createWindowsSurface(windows);
-
     windows.hinstance = hinstance;
     windows.hwnd = try NewHwnd(hinstance, windows);
-    windows.vk = vk;
 
     return windows;
 }

@@ -15,7 +15,7 @@ pub fn main() void {
         std.log.err("{}", .{err});
         return;
     };
-    defer app.release(allocator);
+    defer app.deinit(allocator);
 
     app.run();
 }

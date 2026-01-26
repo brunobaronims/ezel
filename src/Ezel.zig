@@ -3,11 +3,14 @@ const builtin = @import("builtin");
 const Windows = @import("Windows.zig");
 const Vulkan = @import("Vulkan.zig");
 
-const Self = @This();
+platform: Platform,
 
-window: Window,
+pub fn init(allocator: std.mem.Allocator) !Platform {
+    var platform = switch (builtin.os.tag) {
+        .windows => Platform{ .windows = try Windows.init(allocator) },
+        else => @compileError("unsupported platform"),
+    };
 
-pub fn init(allocator: std.mem.Allocator) !Self {
     var required_layers = std.ArrayList([*:0]const u8).empty;
     defer required_layers.deinit(allocator);
     var required_extensions = try std.ArrayList([*:0]const u8).initCapacity(allocator, 2);
@@ -26,35 +29,22 @@ pub fn init(allocator: std.mem.Allocator) !Self {
         .required_layers = &required_layers,
     };
 
-    const vk = try Vulkan.init(allocator, vk_config);
+    try Vulkan.init(allocator, vk_config, &platform);
 
-    const window = switch (builtin.os.tag) {
-        .windows => Window{ .windows = try Windows.init(allocator, vk) },
-        else => @compileError("unsupported platform"),
-    };
-
-    return .{ .window = window };
+    return platform;
 }
 
-pub fn run(self: *Self) void {
-    self.window.run();
-}
-
-pub fn release(self: *Self, allocator: std.mem.Allocator) void {
-    self.window.deinit(allocator);
-}
-
-pub const Window = union(enum) {
+pub const Platform = union(enum) {
     windows: *Windows,
 
-    pub fn run(self: *Window) void {
-        switch (self.*) {
+    pub fn run(platform: *Platform) void {
+        switch (platform.*) {
             inline else => |w| w.run(),
         }
     }
 
-    pub fn deinit(self: *Window, allocator: std.mem.Allocator) void {
-        switch (self.*) {
+    pub fn deinit(platform: *Platform, allocator: std.mem.Allocator) void {
+        switch (platform.*) {
             inline else => |w| {
                 w.deinit(allocator);
                 allocator.destroy(w);

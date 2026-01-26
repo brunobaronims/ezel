@@ -1,6 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const c = @import("vulkan_c");
+const Platform = @import("Ezel.zig").Platform;
 const Windows = @import("Windows.zig");
 
 const Vulkan = @This();
@@ -12,7 +13,7 @@ device: c.VkDevice = null,
 graphics_queue: c.VkQueue = null,
 surface: c.VkSurfaceKHR = null,
 
-pub fn init(allocator: std.mem.Allocator, config: Config) !*Vulkan {
+pub fn init(allocator: std.mem.Allocator, config: Config, platform: *Platform) !void {
     var vk = try allocator.create(Vulkan);
     errdefer allocator.destroy(vk);
 
@@ -23,11 +24,16 @@ pub fn init(allocator: std.mem.Allocator, config: Config) !*Vulkan {
         try vk.setupDebugMessenger();
     }
 
+    switch (platform.*) {
+        .windows => |win| {
+            try vk.createWindowsSurface(win);
+            win.vk = vk;
+        },
+    }
+
     try vk.pickPhysicalDevice(allocator);
 
     try vk.createLogicalDevice(allocator);
-
-    return vk;
 }
 
 pub fn deinit(vulkan: *Vulkan, allocator: std.mem.Allocator) void {
