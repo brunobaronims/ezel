@@ -11,25 +11,7 @@ pub fn init(allocator: std.mem.Allocator) !Platform {
         else => @compileError("unsupported platform"),
     };
 
-    var required_layers = std.ArrayList([*:0]const u8).empty;
-    defer required_layers.deinit(allocator);
-    var required_extensions = try std.ArrayList([*:0]const u8).initCapacity(allocator, 2);
-    defer required_extensions.deinit(allocator);
-
-    switch (builtin.os.tag) {
-        .windows => {
-            try required_extensions.append(allocator, "VK_KHR_surface");
-            try required_extensions.append(allocator, "VK_KHR_win32_surface");
-        },
-        else => @compileError("unsupported platform"),
-    }
-
-    const vk_config: Vulkan.Config = .{
-        .required_extensions = &required_extensions,
-        .required_layers = &required_layers,
-    };
-
-    try Vulkan.init(allocator, vk_config, &platform);
+    try Vulkan.init(allocator, &platform);
 
     return platform;
 }

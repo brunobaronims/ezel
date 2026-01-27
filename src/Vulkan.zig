@@ -13,12 +13,43 @@ device: c.VkDevice = null,
 graphics_queue: c.VkQueue = null,
 present_queue: c.VkQueue = null,
 surface: c.VkSurfaceKHR = null,
+swapchain: c.VkSwapchainKHR = null,
 
 pub fn init(
     allocator: std.mem.Allocator,
-    config: Config,
     platform: *Platform,
 ) !void {
+    var required_layers = std.ArrayList([*:0]const u8).empty;
+    defer required_layers.deinit(allocator);
+    var required_extensions = try std.ArrayList([*:0]const u8).initCapacity(
+        allocator,
+        1,
+    );
+    defer required_extensions.deinit(allocator);
+
+    try required_extensions.append(
+        allocator,
+        c.VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,
+    );
+    try required_extensions.append(
+        allocator,
+        c.VK_KHR_SURFACE_EXTENSION_NAME,
+    );
+
+    switch (platform.*) {
+        .windows => {
+            try required_extensions.append(
+                allocator,
+                c.VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
+            );
+        },
+    }
+
+    const config: Config = .{
+        .required_extensions = &required_extensions,
+        .required_layers = &required_layers,
+    };
+
     var vk = try allocator.create(Vulkan);
     errdefer allocator.destroy(vk);
 
@@ -39,6 +70,8 @@ pub fn init(
     try vk.pickPhysicalDevice(allocator);
 
     try vk.createLogicalDevice(allocator);
+
+    try vk.createSwapchain(allocator);
 }
 
 pub fn deinit(vulkan: *Vulkan, allocator: std.mem.Allocator) void {
@@ -65,24 +98,6 @@ pub fn deinit(vulkan: *Vulkan, allocator: std.mem.Allocator) void {
         c.vkDestroyInstance(instance, null);
     }
     allocator.destroy(vulkan);
-}
-
-pub fn createWindowsSurface(vulkan: *Vulkan, windows: *Windows) !void {
-    const surface_create_info: c.VkWin32SurfaceCreateInfoKHR = .{
-        .sType = c.VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
-        .hwnd = @ptrCast(windows.hwnd),
-        .hinstance = @ptrCast(windows.hinstance),
-    };
-
-    switch (c.vkCreateWin32SurfaceKHR(
-        vulkan.instance,
-        &surface_create_info,
-        null,
-        &vulkan.surface,
-    )) {
-        c.VK_SUCCESS => {},
-        else => |err| return try handleVulkanError(err),
-    }
 }
 
 fn createInstance(
@@ -206,6 +221,44 @@ fn createInstance(
     switch (c.vkCreateInstance(&instance_create_info, null, &vulkan.instance)) {
         c.VK_SUCCESS => {},
         else => |err| return try handleVulkanError(err),
+    }
+}
+
+fn createWindowsSurface(vulkan: *Vulkan, windows: *Windows) !void {
+    const surface_create_info: c.VkWin32SurfaceCreateInfoKHR = .{
+        .sType = c.VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
+        .hwnd = @ptrCast(windows.hwnd),
+        .hinstance = @ptrCast(windows.hinstance),
+    };
+
+    switch (c.vkCreateWin32SurfaceKHR(
+        vulkan.instance,
+        &surface_create_info,
+        null,
+        &vulkan.surface,
+    )) {
+        c.VK_SUCCESS => {},
+        else => |err| return try handleVulkanError(err),
+    }
+}
+
+fn createSwapchain(vulkan: *Vulkan, _: std.mem.Allocator) !void {
+    const surface_info: c.VkPhysicalDeviceSurfaceInfo2KHR = .{
+        .sType = c.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR,
+        .surface = vulkan.surface,
+    };
+
+    var extended_capabilities: c.VkSurfaceCapabilities2KHR = .{
+        .sType = c.VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR,
+    };
+
+    switch (c.vkGetPhysicalDeviceSurfaceCapabilities2KHR(
+        vulkan.physical_device,
+        &surface_info,
+        &extended_capabilities,
+    )) {
+        c.VK_SUCCESS => {},
+        else => |err| return handleVulkanError(err),
     }
 }
 
