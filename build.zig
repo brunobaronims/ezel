@@ -1,5 +1,4 @@
 const std = @import("std");
-
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{
         .default_target = .{
@@ -9,7 +8,6 @@ pub fn build(b: *std.Build) void {
         },
     });
     const optimize = b.standardOptimizeOption(.{});
-
     const exe = b.addExecutable(.{
         .name = "ezel",
         .root_module = b.createModule(.{
@@ -19,46 +17,48 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    const resolved_target = target.result;
+    const is_windows = resolved_target.os.tag == .windows;
+
     const vk = b.addTranslateC(.{
         .root_source_file = .{ .cwd_relative = "/mnt/c/VulkanSDK/1.4.328.1/Include/vulkan/vulkan.h" },
         .target = target,
         .optimize = optimize,
     });
     vk.addIncludePath(.{ .cwd_relative = "/mnt/c/VulkanSDK/1.4.328.1/Include" });
-    vk.defineCMacro("VK_USE_PLATFORM_WIN32_KHR", null);
+
+    if (is_windows) {
+        vk.defineCMacro("VK_USE_PLATFORM_WIN32_KHR", null);
+
+        const win_user = b.addTranslateC(.{
+            .root_source_file = .{ .cwd_relative = "/mnt/c/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/um/Windows.h" },
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        });
+        win_user.defineCMacro("WIN32_LEAN_AND_MEAN", null);
+        const win_user_mod = win_user.createModule();
+        exe.root_module.addImport("win_user", win_user_mod);
+
+        exe.root_module.linkSystemLibrary("user32", .{});
+    }
+
     const vk_mod = vk.createModule();
-
-    const win_user = b.addTranslateC(.{
-        .root_source_file = .{ .cwd_relative = "/mnt/c/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/um/Windows.h" },
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    const win_user_mod = win_user.createModule();
-
-    exe.root_module.addImport("win_user", win_user_mod);
     exe.root_module.addImport("vulkan_c", vk_mod);
     exe.root_module.addLibraryPath(.{ .cwd_relative = "/mnt/c/VulkanSDK/1.4.328.1/Lib" });
-    exe.root_module.linkSystemLibrary("user32", .{});
     exe.root_module.linkSystemLibrary("vulkan-1", .{});
 
     b.installArtifact(exe);
-
     const run_step = b.step("run", "Run the app");
-
     const run_cmd = b.addRunArtifact(exe);
     run_step.dependOn(&run_cmd.step);
-
     run_cmd.step.dependOn(b.getInstallStep());
-
     const test_step = b.step("test", "Run unit tests");
-
     const lib_tests = b.addTest(.{ .root_module = b.createModule(.{
         .root_source_file = b.path("src/Ezel.zig"),
         .target = target,
         .optimize = optimize,
     }) });
-
     const run_lib_tests = b.addRunArtifact(lib_tests);
     test_step.dependOn(&run_lib_tests.step);
 }

@@ -1,5 +1,6 @@
 const std = @import("std");
 const Vulkan = @import("Vulkan.zig");
+const Ezel = @import("Ezel.zig");
 const c = @import("win_user");
 
 const Windows = @This();
@@ -14,6 +15,8 @@ pub fn init(allocator: std.mem.Allocator) !*Windows {
     var windows = try allocator.create(Windows);
     errdefer allocator.destroy(windows);
 
+    _ = c.SetProcessDpiAwarenessContext(c.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+
     const hmodule = c.GetModuleHandleW(null) orelse {
         return error.InitFailed;
     };
@@ -25,14 +28,8 @@ pub fn init(allocator: std.mem.Allocator) !*Windows {
     return windows;
 }
 
-pub fn drawRectangle(self: *Windows) !void {
-    _ = self; 
-
-    return error.NotImplemented;
-}
-
-pub fn run(self: *Windows) void {
-    _ = self;
+pub fn run(windows: *Windows) void {
+    _ = windows;
 
     var msg: c.MSG = undefined;
     while (c.GetMessageW(&msg, null, 0, 0) > 0) {
@@ -41,8 +38,27 @@ pub fn run(self: *Windows) void {
     }
 }
 
-pub fn deinit(self: *Windows, allocator: std.mem.Allocator) void {
-    self.vk.deinit(allocator);
+pub fn deinit(windows: *Windows, allocator: std.mem.Allocator) void {
+    windows.vk.deinit(allocator);
+}
+
+pub fn GetWindowSize(windows: *Windows) !Ezel.Dimensions {
+    var rc: c.RECT = undefined;
+    if (c.GetClientRect(windows.hwnd, &rc) == 0) {
+        std.log.err(
+            "GetClientRect failed: {}",
+            .{c.GetLastError()},
+        );
+        return error.FailedToGetDimensions;
+    }
+
+    const width = rc.right - rc.left;
+    const height = rc.bottom - rc.top;
+
+    return .{
+        .height = @intCast(height),
+        .width = @intCast(width),
+    };
 }
 
 pub fn NewHwnd(hinstance: c.HINSTANCE, window: *Windows) !c.HWND {
@@ -61,7 +77,6 @@ pub fn NewHwnd(hinstance: c.HINSTANCE, window: *Windows) !c.HWND {
     };
 
     // TODO: treat return
-    _ = c.SetLastError(0);
     if (c.RegisterClassExW(&wc) == 0) {
         std.log.err(
             "error while registering window class: {}",
@@ -70,7 +85,6 @@ pub fn NewHwnd(hinstance: c.HINSTANCE, window: *Windows) !c.HWND {
         return error.InitFailed;
     }
 
-    _ = c.SetLastError(0);
     const hwnd = c.CreateWindowExW(
         0,
         class_name,
@@ -92,37 +106,6 @@ pub fn NewHwnd(hinstance: c.HINSTANCE, window: *Windows) !c.HWND {
         return error.InitFailed;
     };
 
-    const dpi = c.GetDpiForWindow(hwnd);
-    const scaled_width = @ceil(
-        1280.0 * @as(
-            f32,
-            @floatFromInt(dpi),
-        ) / 96.0,
-    );
-    const scaled_height = @ceil(
-        1024.0 * @as(
-            f32,
-            @floatFromInt(dpi),
-        ) / 96.0,
-    );
-
-    _ = c.SetLastError(0);
-    if (c.SetWindowPos(
-        hwnd,
-        null,
-        0,
-        0,
-        @intFromFloat(scaled_width),
-        @intFromFloat(scaled_height),
-        c.SWP_NOMOVE,
-    ) == 0) {
-        std.log.err(
-            "error while setting window position: {}",
-            .{c.GetLastError()},
-        );
-        return error.InitFailed;
-    }
-
     _ = c.ShowWindow(hwnd, c.SW_SHOWMAXIMIZED);
     _ = c.UpdateWindow(hwnd);
 
@@ -139,7 +122,6 @@ fn windowProc(
         const pcs: *c.CREATESTRUCTW = @ptrFromInt(@as(usize, @bitCast(lParam)));
         const window: *Windows = @ptrCast(@alignCast(pcs.lpCreateParams));
 
-        _ = c.SetLastError(0);
         const result = c.SetWindowLongPtrW(
             hwnd,
             c.GWLP_USERDATA,
@@ -164,15 +146,6 @@ fn windowProc(
     if (window != null) {
         switch (uMsg) {
             c.WM_PAINT => {
-                var rc: c.RECT = undefined;
-                if (c.GetClientRect(hwnd, &rc) == 0) {
-                    std.log.err(
-                        "GetClientRect failed: {}",
-                        .{c.GetLastError()},
-                    );
-                    return 1;
-                }
-
                 _ = c.ValidateRect(hwnd, null);
 
                 was_handled = true;

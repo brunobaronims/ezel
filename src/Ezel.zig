@@ -5,6 +5,11 @@ const Vulkan = @import("Vulkan.zig");
 
 platform: Platform,
 
+pub const Dimensions = struct {
+    width: u32,
+    height: u32,
+};
+
 pub fn init(allocator: std.mem.Allocator) !Platform {
     var platform = switch (builtin.os.tag) {
         .windows => Platform{ .windows = try Windows.init(allocator) },
@@ -31,6 +36,14 @@ pub const Platform = union(enum) {
                 w.deinit(allocator);
                 allocator.destroy(w);
             },
+        }
+    }
+
+    pub fn GetWindowSize(platform: *Platform) !Dimensions {
+        switch (platform.*) {
+            inline else => |p| {
+                return try p.GetWindowSize();
+            }
         }
     }
 };
