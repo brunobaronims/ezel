@@ -11,14 +11,18 @@ hinstance: c.HINSTANCE,
 dpiX: c.FLOAT = 0,
 dpiY: c.FLOAT = 0,
 
-pub fn init(allocator: std.mem.Allocator) !*Windows {
+pub fn init(allocator: std.mem.Allocator) InitializationError!*Windows {
     var windows = try allocator.create(Windows);
     errdefer allocator.destroy(windows);
 
-    _ = c.SetProcessDpiAwarenessContext(c.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+    if (!c.SUCCEEDED(c.SetProcessDpiAwarenessContext(c
+        .DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2)))
+    {
+        return InitializationError.CouldNotSetDpiAwareness;
+    }
 
     const hmodule = c.GetModuleHandleW(null) orelse {
-        return error.InitFailed;
+        return InitializationError.CouldNotGetModuleHandle;
     };
     const hinstance: c.HINSTANCE = @ptrCast(hmodule);
 
@@ -76,13 +80,8 @@ pub fn NewHwnd(hinstance: c.HINSTANCE, window: *Windows) !c.HWND {
         .hCursor = c.LoadCursorW(null, cursor),
     };
 
-    // TODO: treat return
     if (c.RegisterClassExW(&wc) == 0) {
-        std.log.err(
-            "error while registering window class: {}",
-            .{c.GetLastError()},
-        );
-        return error.InitFailed;
+        return InitializationError.CouldNotRegisterWindowClass;
     }
 
     const hwnd = c.CreateWindowExW(
@@ -99,11 +98,7 @@ pub fn NewHwnd(hinstance: c.HINSTANCE, window: *Windows) !c.HWND {
         hinstance,
         window,
     ) orelse {
-        std.log.err(
-            "error while creating window: {}",
-            .{c.GetLastError()},
-        );
-        return error.InitFailed;
+        return InitializationError.CouldNotCreateWindow;
     };
 
     _ = c.ShowWindow(hwnd, c.SW_SHOWMAXIMIZED);
@@ -183,3 +178,10 @@ const WndProc = *const fn (
     c.WPARAM,
     c.LPARAM,
 ) callconv(.winapi) c.LRESULT;
+
+const InitializationError = error{
+    CouldNotSetDpiAwareness,
+    CouldNotGetModuleHandle,
+    CouldNotRegisterWindowClass,
+    CouldNotCreateWindow,
+} || error{OutOfMemory};

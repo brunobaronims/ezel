@@ -12,13 +12,16 @@ debug_messenger: c.VkDebugUtilsMessengerEXT = null,
 physical_device: c.VkPhysicalDevice = null,
 device: c.VkDevice = null,
 graphics_queue: c.VkQueue = null,
-graphics_family: ?u32 = null,
+graphics_family: u32 = undefined,
 present_queue: c.VkQueue = null,
-present_family: ?u32 = null,
+present_family: u32 = undefined,
 queue_indices: [2]u32,
 surface: c.VkSurfaceKHR = null,
 swapchain: c.VkSwapchainKHR = null,
 swapchain_images: ?[]c.VkImage = null,
+swapchain_image_format: c.VkFormat = c.VK_FORMAT_UNDEFINED,
+swapchain_extent: c.VkExtent2D = .{},
+swapchain_image_views: ?[]c.VkImageView = null,
 
 pub fn init(
     allocator: std.mem.Allocator,
@@ -79,6 +82,8 @@ pub fn init(
     const dimensions = try platform.GetWindowSize();
 
     try vk.createSwapchain(allocator, dimensions);
+
+    try vk.createImageViews(allocator);
 }
 
 pub fn deinit(vulkan: *Vulkan, allocator: std.mem.Allocator) void {
@@ -91,6 +96,15 @@ pub fn deinit(vulkan: *Vulkan, allocator: std.mem.Allocator) void {
                 ),
             );
         DestroyDebugMessenger.?(vulkan.instance, messenger, null);
+    }
+
+    if (vulkan.swapchain_image_views) |views| {
+        for (views) |view| {
+            if (view) |v| {
+                c.vkDestroyImageView(vulkan.device, v, null);
+            }
+        }
+        allocator.free(views);
     }
 
     if (vulkan.swapchain_images) |images| {
@@ -280,26 +294,26 @@ fn createSwapchain(
         else => |err| return handleVulkanError(err),
     }
 
-    const format_info = try vulkan.chooseSurfaceFormat(
+    const format_info = try vulkan.ChooseSurfaceFormat(
         allocator,
         surface_info,
     );
 
-    const present_mode = try vulkan.choosePresentMode(allocator);
+    const present_mode = try vulkan.ChoosePresentMode(allocator);
 
-    var extent: c.VkExtent2D = .{};
     if (extended_capabilities.surfaceCapabilities.currentExtent.width !=
         std.math.maxInt(u32))
     {
-        extent = extended_capabilities.surfaceCapabilities.currentExtent;
+        vulkan.swapchain_extent =
+            extended_capabilities.surfaceCapabilities.currentExtent;
     } else {
-        extent.width =
+        vulkan.swapchain_extent.width =
             std.math.clamp(
                 dimensions.width,
                 extended_capabilities.surfaceCapabilities.minImageExtent.width,
                 extended_capabilities.surfaceCapabilities.maxImageExtent.width,
             );
-        extent.height =
+        vulkan.swapchain_extent.height =
             std.math.clamp(
                 dimensions.height,
                 extended_capabilities.surfaceCapabilities.minImageExtent.height,
@@ -328,7 +342,7 @@ fn createSwapchain(
         .minImageCount = min_image_count,
         .imageFormat = format_info.surfaceFormat.format,
         .imageColorSpace = format_info.surfaceFormat.colorSpace,
-        .imageExtent = extent,
+        .imageExtent = vulkan.swapchain_extent,
         .imageArrayLayers = 1,
         .imageUsage = c.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         .imageSharingMode = c.VK_SHARING_MODE_EXCLUSIVE,
@@ -345,6 +359,8 @@ fn createSwapchain(
         swapchain_create_info.queueFamilyIndexCount = 2;
         swapchain_create_info.pQueueFamilyIndices = &vulkan.queue_indices;
     }
+
+    vulkan.swapchain_image_format = format_info.surfaceFormat.format;
 
     switch (c.vkCreateSwapchainKHR(
         vulkan.device,
@@ -389,7 +405,44 @@ fn createSwapchain(
     }
 }
 
-fn choosePresentMode(
+fn createImageViews(
+    vulkan: *Vulkan,
+    allocator: std.mem.Allocator,
+) !void {
+    var create_info: c.VkImageViewCreateInfo = .{
+        .sType = c.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .viewType = c.VK_IMAGE_VIEW_TYPE_2D,
+        .format = vulkan.swapchain_image_format,
+        .subresourceRange = .{
+            .aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+    };
+
+    vulkan.swapchain_image_views = try allocator.alloc(
+        c.VkImageView,
+        vulkan.swapchain_images.?.len,
+    );
+
+    for (vulkan.swapchain_images.?, 0..) |image, i| {
+        create_info.image = image;
+
+        switch (c.vkCreateImageView(
+            vulkan.device,
+            &create_info,
+            null,
+            &vulkan.swapchain_image_views.?.ptr[i],
+        )) {
+            c.VK_SUCCESS => {},
+            else => |err| try handleVulkanError(err),
+        }
+    }
+}
+
+fn ChoosePresentMode(
     vulkan: *Vulkan,
     allocator: std.mem.Allocator,
 ) !c.VkPresentModeKHR {
@@ -433,7 +486,7 @@ fn choosePresentMode(
     return c.VK_PRESENT_MODE_FIFO_KHR;
 }
 
-fn chooseSurfaceFormat(
+fn ChooseSurfaceFormat(
     vulkan: *Vulkan,
     allocator: std.mem.Allocator,
     surface_info: c.VkPhysicalDeviceSurfaceInfo2KHR,
@@ -673,16 +726,14 @@ fn createLogicalDevice(vulkan: *Vulkan, allocator: std.mem.Allocator) !void {
                 break @intCast(i);
             }
         } else return error.NoGraphicsQueueFamilyFound;
-    const graphics_family = vulkan.graphics_family.?;
 
     vulkan.present_family =
-        if (try vulkan.getSurfaceSupport(graphics_family))
-            graphics_family
+        if (try vulkan.getSurfaceSupport(vulkan.graphics_family))
+            vulkan.graphics_family
         else
             @truncate(queue_families.len);
-    const present_family = vulkan.present_family.?;
 
-    if (present_family == queue_families.len) {
+    if (vulkan.present_family == queue_families.len) {
         for (queue_families, 0..) |q, i| {
             const supports_graphics =
                 (q.queueFamilyProperties.queueFlags &
@@ -696,7 +747,7 @@ fn createLogicalDevice(vulkan: *Vulkan, allocator: std.mem.Allocator) !void {
             }
         }
 
-        if (present_family == queue_families.len) {
+        if (vulkan.present_family == queue_families.len) {
             for (queue_families, 0..) |_, i| {
                 const supports_present = try vulkan
                     .getSurfaceSupport(@truncate(i));
@@ -709,14 +760,14 @@ fn createLogicalDevice(vulkan: *Vulkan, allocator: std.mem.Allocator) !void {
         }
     }
 
-    vulkan.queue_indices[0] = graphics_family;
-    vulkan.queue_indices[1] = present_family;
+    vulkan.queue_indices[0] = vulkan.graphics_family;
+    vulkan.queue_indices[1] = vulkan.present_family;
 
     const priority: f32 = 0.5;
 
     const device_queue_create_info: c.VkDeviceQueueCreateInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        .queueFamilyIndex = @intCast(graphics_family),
+        .queueFamilyIndex = @intCast(vulkan.graphics_family),
         .pQueuePriorities = &priority,
         .queueCount = 1,
     };
@@ -758,14 +809,14 @@ fn createLogicalDevice(vulkan: *Vulkan, allocator: std.mem.Allocator) !void {
 
     c.vkGetDeviceQueue(
         vulkan.device,
-        graphics_family,
+        vulkan.graphics_family,
         0,
         &vulkan.graphics_queue,
     );
 
     c.vkGetDeviceQueue(
         vulkan.device,
-        present_family,
+        vulkan.present_family,
         0,
         &vulkan.present_queue,
     );
@@ -894,6 +945,12 @@ inline fn handleVulkanError(result: c.VkResult) !void {
     }
 }
 
+pub const Config = struct {
+    debug: bool = true,
+    required_extensions: *std.ArrayList([*:0]const u8),
+    required_layers: *std.ArrayList([*:0]const u8),
+};
+
 const VKAPI_CALL = if (builtin.os.tag == .windows)
     std.builtin.CallingConvention.winapi
 else
@@ -906,10 +963,4 @@ const device_extensions = [_][*:0]const u8{
     c.VK_KHR_SPIRV_1_4_EXTENSION_NAME,
     c.VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
     c.VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
-};
-
-pub const Config = struct {
-    debug: bool = true,
-    required_extensions: *std.ArrayList([*:0]const u8),
-    required_layers: *std.ArrayList([*:0]const u8),
 };
