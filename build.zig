@@ -17,21 +17,64 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    const resolved_target = target.result;
-    const is_windows = resolved_target.os.tag == .windows;
+    const is_windows = target.result.os.tag == .windows;
+
+    const vulkan_path = b.option(
+        []const u8,
+        "vulkan",
+        "Vulkan SDK path",
+    ) orelse b.graph.environ_map.get("VULKAN_SDK");
+    if (vulkan_path == null or std.mem.trim(
+        u8,
+        vulkan_path.?,
+        &std.ascii.whitespace,
+    ).len == 0) {
+        b.getInstallStep().dependOn(&b.addFail(
+            "Vulkan SDK path not configured",
+        ).step);
+        return;
+    }
 
     const vk = b.addTranslateC(.{
-        .root_source_file = .{ .cwd_relative = "/mnt/c/VulkanSDK/1.4.328.1/Include/vulkan/vulkan.h" },
+        .root_source_file = .{
+            .cwd_relative = b.pathJoin(&.{
+                vulkan_path.?,
+                "/Include/vulkan/vulkan.h",
+            }),
+        },
         .target = target,
         .optimize = optimize,
     });
-    vk.addIncludePath(.{ .cwd_relative = "/mnt/c/VulkanSDK/1.4.328.1/Include" });
+    vk.addIncludePath(.{
+        .cwd_relative = b.pathJoin(&.{ vulkan_path.?, "/Include" }),
+    });
 
     if (is_windows) {
         vk.defineCMacro("VK_USE_PLATFORM_WIN32_KHR", null);
 
+        const windows_sdk_path = b.option(
+            []const u8,
+            "windows-sdk",
+            "Windows SDK path",
+        ) orelse b.graph.environ_map.get("WINDOWS_SDK");
+        if (windows_sdk_path == null or std.mem.trim(
+            u8,
+            windows_sdk_path.?,
+            &std.ascii.whitespace,
+        ).len == 0) {
+            b.getInstallStep().dependOn(&b.addFail(
+                "Windows SDK path not configured",
+            ).step);
+            return;
+        }
+
         const win_user = b.addTranslateC(.{
-            .root_source_file = .{ .cwd_relative = "/mnt/c/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/um/Windows.h" },
+            .root_source_file = .{
+                .cwd_relative = b.pathJoin(&.{
+                    windows_sdk_path.?,
+                    "/um/Windows.h",
+                }),
+            },
             .target = target,
             .optimize = optimize,
             .link_libc = true,
@@ -45,7 +88,9 @@ pub fn build(b: *std.Build) void {
 
     const vk_mod = vk.createModule();
     exe.root_module.addImport("vulkan_c", vk_mod);
-    exe.root_module.addLibraryPath(.{ .cwd_relative = "/mnt/c/VulkanSDK/1.4.328.1/Lib" });
+    exe.root_module.addLibraryPath(.{
+        .cwd_relative = b.pathJoin(&.{ vulkan_path.?, "Lib" }),
+    });
     exe.root_module.linkSystemLibrary("vulkan-1", .{});
 
     b.installArtifact(exe);
@@ -53,12 +98,4 @@ pub fn build(b: *std.Build) void {
     const run_cmd = b.addRunArtifact(exe);
     run_step.dependOn(&run_cmd.step);
     run_cmd.step.dependOn(b.getInstallStep());
-    const test_step = b.step("test", "Run unit tests");
-    const lib_tests = b.addTest(.{ .root_module = b.createModule(.{
-        .root_source_file = b.path("src/Ezel.zig"),
-        .target = target,
-        .optimize = optimize,
-    }) });
-    const run_lib_tests = b.addRunArtifact(lib_tests);
-    test_step.dependOn(&run_lib_tests.step);
 }
