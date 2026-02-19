@@ -1,12 +1,6 @@
 const std = @import("std");
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{
-        .default_target = .{
-            .cpu_arch = .x86_64,
-            .os_tag = .windows,
-            .abi = .gnu,
-        },
-    });
+    const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
     const ezel_mod = b.addModule("ezel", .{
         .root_source_file = b.path("src/Ezel.zig"),
@@ -97,11 +91,11 @@ pub fn build(b: *std.Build) void {
     ezel_mod.addImport("vulkan_c", vk_mod);
     exe.root_module.addImport("vulkan_c", vk_mod);
     ezel_mod.addLibraryPath(.{
-        .cwd_relative = b.pathJoin(&.{ vulkan_path.?, "Lib" }),
+        .cwd_relative = b.pathJoin(&.{ vulkan_path.?, "/Lib" }),
     });
     ezel_mod.linkSystemLibrary("vulkan-1", .{});
     exe.root_module.addLibraryPath(.{
-        .cwd_relative = b.pathJoin(&.{ vulkan_path.?, "Lib" }),
+        .cwd_relative = b.pathJoin(&.{ vulkan_path.?, "/Lib" }),
     });
     exe.root_module.linkSystemLibrary("vulkan-1", .{});
 
