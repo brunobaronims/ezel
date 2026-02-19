@@ -85,19 +85,23 @@ pub fn build(b: *std.Build) void {
 
         ezel_mod.linkSystemLibrary("user32", .{});
         exe.root_module.linkSystemLibrary("user32", .{});
+
+        ezel_mod.linkSystemLibrary("vulkan-1", .{});
+        exe.root_module.linkSystemLibrary("vulkan-1", .{});
+    } else {
+        ezel_mod.linkSystemLibrary("vulkan", .{});
+        exe.root_module.linkSystemLibrary("vulkan", .{});
     }
 
     const vk_mod = vk.createModule();
-    ezel_mod.addImport("vulkan_c", vk_mod);
-    exe.root_module.addImport("vulkan_c", vk_mod);
+    ezel_mod.addImport("vulkan", vk_mod);
+    exe.root_module.addImport("vulkan", vk_mod);
     ezel_mod.addLibraryPath(.{
         .cwd_relative = b.pathJoin(&.{ vulkan_path.?, "/Lib" }),
     });
-    ezel_mod.linkSystemLibrary("vulkan-1", .{});
     exe.root_module.addLibraryPath(.{
         .cwd_relative = b.pathJoin(&.{ vulkan_path.?, "/Lib" }),
     });
-    exe.root_module.linkSystemLibrary("vulkan-1", .{});
 
     b.installArtifact(exe);
     const run_step = b.step("run", "Run the app");

@@ -1,6 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
-const c = @import("vulkan_c");
+const c = @import("vulkan");
 const Ezel = @import("Ezel.zig");
 const Platform = Ezel.Platform;
 const Windows = @import("Windows.zig");
