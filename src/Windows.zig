@@ -44,6 +44,7 @@ pub fn run(windows: *Windows) void {
 
 pub fn deinit(windows: *Windows, allocator: std.mem.Allocator) void {
     windows.vk.deinit(allocator);
+    allocator.destroy(windows);
 }
 
 pub fn GetWindowSize(windows: *Windows) !Ezel.Dimensions {

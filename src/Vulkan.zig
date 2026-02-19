@@ -3,7 +3,6 @@ const builtin = @import("builtin");
 const c = @import("vulkan");
 const Ezel = @import("Ezel.zig");
 const Platform = Ezel.Platform;
-const Windows = @import("Windows.zig");
 
 const Vulkan = @This();
 
@@ -44,13 +43,14 @@ pub fn init(
         c.VK_KHR_SURFACE_EXTENSION_NAME,
     );
 
-    switch (platform.*) {
+    switch (builtin.os.tag) {
         .windows => {
             try required_extensions.append(
                 allocator,
                 c.VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
             );
         },
+        else => @compileError("unsupported platform"),
     }
 
     const config: Config = .{
@@ -68,11 +68,12 @@ pub fn init(
         try vk.setupDebugMessenger();
     }
 
-    switch (platform.*) {
-        .windows => |win| {
-            try vk.createWindowsSurface(win);
-            win.vk = vk;
+    switch (builtin.os.tag) {
+        .windows => {
+            try vk.createSurface(platform);
+            platform.vk = vk;
         },
+        else => @compileError("unsupported platform"),
     }
 
     try vk.pickPhysicalDevice(allocator);
@@ -253,21 +254,26 @@ fn createInstance(
     }
 }
 
-fn createWindowsSurface(vulkan: *Vulkan, windows: *Windows) !void {
-    const surface_create_info: c.VkWin32SurfaceCreateInfoKHR = .{
-        .sType = c.VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
-        .hwnd = @ptrCast(windows.hwnd),
-        .hinstance = @ptrCast(windows.hinstance),
-    };
+fn createSurface(vulkan: *Vulkan, platform: *Platform) !void {
+    switch (builtin.os.tag) {
+        .windows => {
+            const surface_create_info: c.VkWin32SurfaceCreateInfoKHR = .{
+                .sType = c.VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
+                .hwnd = @ptrCast(platform.hwnd),
+                .hinstance = @ptrCast(platform.hinstance),
+            };
 
-    switch (c.vkCreateWin32SurfaceKHR(
-        vulkan.instance,
-        &surface_create_info,
-        null,
-        &vulkan.surface,
-    )) {
-        c.VK_SUCCESS => {},
-        else => |err| try handleVulkanError(err),
+            switch (c.vkCreateWin32SurfaceKHR(
+                vulkan.instance,
+                &surface_create_info,
+                null,
+                &vulkan.surface,
+            )) {
+                c.VK_SUCCESS => {},
+                else => |err| try handleVulkanError(err),
+            }
+        },
+        else => @compileError("unsupported platform"),
     }
 }
 
