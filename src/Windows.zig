@@ -1,7 +1,7 @@
 const std = @import("std");
 const Vulkan = @import("Vulkan.zig");
 const Ezel = @import("Ezel.zig");
-const c = @import("win_user");
+const c = @import("c/win_user.zig");
 
 const Windows = @This();
 

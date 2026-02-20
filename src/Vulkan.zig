@@ -1,6 +1,10 @@
 const std = @import("std");
 const builtin = @import("builtin");
-const c = @import("vulkan");
+const c = switch (builtin.os.tag) {
+    .windows => @import("c/vulkan_windows.zig"),
+    .linux => @import("c/vulkan_linux.zig"),
+    else => @compileError("unsupported platform"),
+};
 const Ezel = @import("Ezel.zig");
 const Platform = Ezel.Platform;
 
@@ -68,13 +72,7 @@ pub fn init(
         try vk.setupDebugMessenger();
     }
 
-    switch (builtin.os.tag) {
-        .windows => {
-            try vk.createSurface(platform);
-            platform.vk = vk;
-        },
-        else => @compileError("unsupported platform"),
-    }
+    try vk.createSurface(platform);
 
     try vk.pickPhysicalDevice(allocator);
 
@@ -85,6 +83,8 @@ pub fn init(
     try vk.createSwapchain(allocator, dimensions);
 
     try vk.createImageViews(allocator);
+
+    platform.vk = vk;
 }
 
 pub fn deinit(vulkan: *Vulkan, allocator: std.mem.Allocator) void {

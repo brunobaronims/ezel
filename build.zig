@@ -34,55 +34,7 @@ pub fn build(b: *std.Build) void {
         return;
     }
 
-    const vk = b.addTranslateC(.{
-        .root_source_file = .{
-            .cwd_relative = b.pathJoin(&.{
-                vulkan_path.?,
-                "/Include/vulkan/vulkan.h",
-            }),
-        },
-        .target = target,
-        .optimize = optimize,
-    });
-    vk.addIncludePath(.{
-        .cwd_relative = b.pathJoin(&.{ vulkan_path.?, "/Include" }),
-    });
-
     if (is_windows) {
-        vk.defineCMacro("VK_USE_PLATFORM_WIN32_KHR", null);
-
-        const windows_sdk_path = b.option(
-            []const u8,
-            "windows-sdk",
-            "Windows SDK path",
-        ) orelse b.graph.environ_map.get("WINDOWS_SDK");
-        if (windows_sdk_path == null or std.mem.trim(
-            u8,
-            windows_sdk_path.?,
-            &std.ascii.whitespace,
-        ).len == 0) {
-            b.getInstallStep().dependOn(&b.addFail(
-                "Windows SDK path not configured",
-            ).step);
-            return;
-        }
-
-        const win_user = b.addTranslateC(.{
-            .root_source_file = .{
-                .cwd_relative = b.pathJoin(&.{
-                    windows_sdk_path.?,
-                    "/um/Windows.h",
-                }),
-            },
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-        });
-        win_user.defineCMacro("WIN32_LEAN_AND_MEAN", null);
-        const win_user_mod = win_user.createModule();
-        ezel_mod.addImport("win_user", win_user_mod);
-        exe.root_module.addImport("win_user", win_user_mod);
-
         ezel_mod.linkSystemLibrary("user32", .{});
         exe.root_module.linkSystemLibrary("user32", .{});
 
@@ -93,14 +45,11 @@ pub fn build(b: *std.Build) void {
         exe.root_module.linkSystemLibrary("vulkan", .{});
     }
 
-    const vk_mod = vk.createModule();
-    ezel_mod.addImport("vulkan", vk_mod);
-    exe.root_module.addImport("vulkan", vk_mod);
     ezel_mod.addLibraryPath(.{
-        .cwd_relative = b.pathJoin(&.{ vulkan_path.?, "/Lib" }),
+        .cwd_relative = b.pathJoin(&.{ vulkan_path.?, "Lib" }),
     });
     exe.root_module.addLibraryPath(.{
-        .cwd_relative = b.pathJoin(&.{ vulkan_path.?, "/Lib" }),
+        .cwd_relative = b.pathJoin(&.{ vulkan_path.?, "Lib" }),
     });
 
     b.installArtifact(exe);
