@@ -1,19 +1,18 @@
 const std = @import("std");
-const Vulkan = @import("Vulkan.zig");
-const Ezel = @import("Ezel.zig");
-const c = @import("c/win_user.zig");
+const Vulkan = @import("../Vulkan.zig");
+const Ezel = @import("../Ezel.zig");
+const c = @import("../c/win_user.zig");
 
-const Windows = @This();
+const Window = @This();
 
-vk: *Vulkan,
 hwnd: c.HWND,
 hinstance: c.HINSTANCE,
 dpiX: c.FLOAT = 0,
 dpiY: c.FLOAT = 0,
 
-pub fn init(allocator: std.mem.Allocator) InitializationError!*Windows {
-    var windows = try allocator.create(Windows);
-    errdefer allocator.destroy(windows);
+pub fn init(allocator: std.mem.Allocator) InitializationError!*Window {
+    var window = try allocator.create(Window);
+    errdefer allocator.destroy(window);
 
     if (!c.SUCCEEDED(c.SetProcessDpiAwarenessContext(c
         .DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2)))
@@ -26,14 +25,14 @@ pub fn init(allocator: std.mem.Allocator) InitializationError!*Windows {
     };
     const hinstance: c.HINSTANCE = @ptrCast(hmodule);
 
-    windows.hinstance = hinstance;
-    windows.hwnd = try NewHwnd(hinstance, windows);
+    window.hinstance = hinstance;
+    window.hwnd = try NewHwnd(hinstance, window);
 
-    return windows;
+    return window;
 }
 
-pub fn run(windows: *Windows) void {
-    _ = windows;
+pub fn run(window: *Window) void {
+    _ = window;
 
     var msg: c.MSG = undefined;
     while (c.GetMessageW(&msg, null, 0, 0) > 0) {
@@ -42,14 +41,14 @@ pub fn run(windows: *Windows) void {
     }
 }
 
-pub fn deinit(windows: *Windows, allocator: std.mem.Allocator) void {
-    windows.vk.deinit(allocator);
-    allocator.destroy(windows);
+pub fn deinit(window: *Window, allocator: std.mem.Allocator) void {
+    _ = c.DestroyWindow(window.hwnd);
+    allocator.destroy(window);
 }
 
-pub fn GetWindowSize(windows: *Windows) !Ezel.Dimensions {
+pub fn GetSize(window: *Window) !Ezel.Dimensions {
     var rc: c.RECT = undefined;
-    if (c.GetClientRect(windows.hwnd, &rc) == 0) {
+    if (c.GetClientRect(window.hwnd, &rc) == 0) {
         std.log.err(
             "GetClientRect failed: {}",
             .{c.GetLastError()},
@@ -66,7 +65,7 @@ pub fn GetWindowSize(windows: *Windows) !Ezel.Dimensions {
     };
 }
 
-pub fn NewHwnd(hinstance: c.HINSTANCE, window: *Windows) !c.HWND {
+pub fn NewHwnd(hinstance: c.HINSTANCE, window: *Window) !c.HWND {
     const class_name = std.unicode.utf8ToUtf16LeStringLiteral("ezel");
     const window_title = std.unicode.utf8ToUtf16LeStringLiteral("ezel");
     const cursor = @as(c.LPCWSTR, @ptrFromInt(32512));
@@ -116,7 +115,7 @@ fn windowProc(
 ) callconv(.winapi) c.LRESULT {
     if (uMsg == c.WM_CREATE) {
         const pcs: *c.CREATESTRUCTW = @ptrFromInt(@as(usize, @bitCast(lParam)));
-        const window: *Windows = @ptrCast(@alignCast(pcs.lpCreateParams));
+        const window: *Window = @ptrCast(@alignCast(pcs.lpCreateParams));
 
         const result = c.SetWindowLongPtrW(
             hwnd,
@@ -132,7 +131,7 @@ fn windowProc(
     }
 
     const p = c.GetWindowLongPtrW(hwnd, c.GWLP_USERDATA);
-    const window: ?*Windows = if (p != 0)
+    const window: ?*Window = if (p != 0)
         @ptrFromInt(@as(usize, @intCast(p)))
     else
         null;

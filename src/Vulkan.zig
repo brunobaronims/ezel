@@ -6,7 +6,7 @@ const c = switch (builtin.os.tag) {
     else => @compileError("unsupported platform"),
 };
 const Ezel = @import("Ezel.zig");
-const Platform = Ezel.Platform;
+const Window = Ezel.Window;
 
 const Vulkan = @This();
 
@@ -28,8 +28,8 @@ swapchain_image_views: ?[]c.VkImageView = null,
 
 pub fn init(
     allocator: std.mem.Allocator,
-    platform: *Platform,
-) !void {
+    window: *Window,
+) InitializationError!*Vulkan {
     var required_layers: std.ArrayList([*:0]const u8) = .empty;
     defer required_layers.deinit(allocator);
     var required_extensions = try std.ArrayList([*:0]const u8).initCapacity(
@@ -62,29 +62,29 @@ pub fn init(
         .required_layers = &required_layers,
     };
 
-    var vk = try allocator.create(Vulkan);
-    errdefer allocator.destroy(vk);
+    var vulkan = try allocator.create(Vulkan);
+    errdefer vulkan.deinit(allocator);
 
-    try vk.createInstance(allocator, config);
-    errdefer vk.deinit(allocator);
+    try vulkan.createInstance(allocator, config);
 
     if (config.debug) {
-        try vk.setupDebugMessenger();
+        try vulkan.setupDebugMessenger();
     }
 
-    try vk.createSurface(platform);
+    try vulkan.createSurface(window);
 
-    try vk.pickPhysicalDevice(allocator);
+    try vulkan.pickPhysicalDevice(allocator);
 
-    try vk.createLogicalDevice(allocator);
+    try vulkan.createLogicalDevice(allocator);
 
-    const dimensions = try platform.GetWindowSize();
+    const dimensions = window.GetSize() catch
+        return InitializationError.CouldNotGetDimensions;
 
-    try vk.createSwapchain(allocator, dimensions);
+    try vulkan.createSwapchain(allocator, dimensions);
 
-    try vk.createImageViews(allocator);
+    try vulkan.createImageViews(allocator);
 
-    platform.vk = vk;
+    return vulkan;
 }
 
 pub fn deinit(vulkan: *Vulkan, allocator: std.mem.Allocator) void {
@@ -134,7 +134,7 @@ fn createInstance(
     vulkan: *Vulkan,
     allocator: std.mem.Allocator,
     config: Config,
-) !void {
+) InitializationError!void {
     var required_extensions = config.required_extensions;
     var required_layers = config.required_layers;
     if (config.debug) {
@@ -157,7 +157,13 @@ fn createInstance(
         null,
     )) {
         c.VK_SUCCESS, c.VK_INCOMPLETE => {},
-        else => |err| try handleVulkanError(err),
+        else => |err| {
+            std.log.err(
+                "vulkan error while enumerating extensions: {d}",
+                .{err},
+            );
+            return InitializationError.CouldNotCreateInstance;
+        },
     }
 
     switch (c.vkEnumerateInstanceLayerProperties(
@@ -165,7 +171,13 @@ fn createInstance(
         null,
     )) {
         c.VK_SUCCESS, c.VK_INCOMPLETE => {},
-        else => |err| try handleVulkanError(err),
+        else => |err| {
+            std.log.err(
+                "vulkan error while enumerating layers: {d}",
+                .{err},
+            );
+            return InitializationError.CouldNotCreateInstance;
+        },
     }
 
     var available_extensions_properties = try allocator.alloc(
@@ -189,7 +201,13 @@ fn createInstance(
         c.VK_INCOMPLETE => {
             std.log.warn("Unable to retrieve all extension properties", .{});
         },
-        else => |err| try handleVulkanError(err),
+        else => |err| {
+            std.log.err(
+                "vulkan error while retrieving extensions: {d}",
+                .{err},
+            );
+            return InitializationError.CouldNotCreateInstance;
+        },
     }
 
     switch (c.vkEnumerateInstanceLayerProperties(
@@ -200,7 +218,13 @@ fn createInstance(
         c.VK_INCOMPLETE => {
             std.log.warn("Unable to retrieve all layer properties", .{});
         },
-        else => |err| try handleVulkanError(err),
+        else => |err| {
+            std.log.err(
+                "vulkan error while retrieving layers: {d}",
+                .{err},
+            );
+            return InitializationError.CouldNotCreateInstance;
+        },
     }
 
     for (required_extensions.items) |e| {
@@ -212,7 +236,7 @@ fn createInstance(
         } else false;
 
         if (!found) {
-            return error.MissingRequiredExtension;
+            return InitializationError.MissingRequiredExtension;
         }
     }
 
@@ -225,7 +249,7 @@ fn createInstance(
         } else false;
 
         if (!found) {
-            return error.MissingRequiredLayer;
+            return InitializationError.MissingRequiredLayer;
         }
     }
 
@@ -248,19 +272,32 @@ fn createInstance(
         .flags = 0,
     };
 
-    switch (c.vkCreateInstance(&instance_create_info, null, &vulkan.instance)) {
+    switch (c.vkCreateInstance(
+        &instance_create_info,
+        null,
+        &vulkan.instance,
+    )) {
         c.VK_SUCCESS => {},
-        else => |err| try handleVulkanError(err),
+        else => |err| {
+            std.log.err(
+                "vulkan error while creating instance: {d}",
+                .{err},
+            );
+            return InitializationError.CouldNotCreateInstance;
+        },
     }
 }
 
-fn createSurface(vulkan: *Vulkan, platform: *Platform) !void {
+fn createSurface(
+    vulkan: *Vulkan,
+    window: *Window,
+) InitializationError!void {
     switch (builtin.os.tag) {
         .windows => {
             const surface_create_info: c.VkWin32SurfaceCreateInfoKHR = .{
                 .sType = c.VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
-                .hwnd = @ptrCast(platform.hwnd),
-                .hinstance = @ptrCast(platform.hinstance),
+                .hwnd = @ptrCast(window.hwnd),
+                .hinstance = @ptrCast(window.hinstance),
             };
 
             switch (c.vkCreateWin32SurfaceKHR(
@@ -270,7 +307,13 @@ fn createSurface(vulkan: *Vulkan, platform: *Platform) !void {
                 &vulkan.surface,
             )) {
                 c.VK_SUCCESS => {},
-                else => |err| try handleVulkanError(err),
+                else => |err| {
+                    std.log.err(
+                        "vulkan error while creating surface: {d}",
+                        .{err},
+                    );
+                    return InitializationError.CouldNotCreateSurface;
+                },
             }
         },
         else => @compileError("unsupported platform"),
@@ -281,7 +324,7 @@ fn createSwapchain(
     vulkan: *Vulkan,
     allocator: std.mem.Allocator,
     dimensions: Ezel.Dimensions,
-) !void {
+) InitializationError!void {
     const surface_info: c.VkPhysicalDeviceSurfaceInfo2KHR = .{
         .sType = c.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR,
         .surface = vulkan.surface,
@@ -297,15 +340,33 @@ fn createSwapchain(
         &extended_capabilities,
     )) {
         c.VK_SUCCESS => {},
-        else => |err| return handleVulkanError(err),
+        else => |err| {
+            std.log.err(
+                "vulkan error while retrieving surface capabilities: {d}",
+                .{err},
+            );
+            return InitializationError.CouldNotCreateSwapchain;
+        },
     }
 
-    const format_info = try vulkan.ChooseSurfaceFormat(
+    const format_info = vulkan.ChooseSurfaceFormat(
         allocator,
         surface_info,
-    );
+    ) catch |err| {
+        if (err == error.OutOfMemory) {
+            return err;
+        }
 
-    const present_mode = try vulkan.ChoosePresentMode(allocator);
+        return InitializationError.CouldNotCreateSwapchain;
+    };
+
+    const present_mode = vulkan.ChoosePresentMode(allocator) catch |err| {
+        if (err == error.OutOfMemory) {
+            return err;
+        }
+
+        return InitializationError.CouldNotCreateSwapchain;
+    };
 
     if (extended_capabilities.surfaceCapabilities.currentExtent.width !=
         std.math.maxInt(u32))
@@ -375,7 +436,13 @@ fn createSwapchain(
         &vulkan.swapchain,
     )) {
         c.VK_SUCCESS => {},
-        else => |err| try handleVulkanError(err),
+        else => |err| {
+            std.log.err(
+                "vulkan error while creating swapchain: {d}",
+                .{err},
+            );
+            return InitializationError.CouldNotCreateSwapchain;
+        },
     }
 
     var image_count: u32 = 0;
@@ -386,7 +453,13 @@ fn createSwapchain(
         null,
     )) {
         c.VK_SUCCESS => {},
-        else => |err| try handleVulkanError(err),
+        else => |err| {
+            std.log.err(
+                "vulkan error while enumerating swapchain images: {d}",
+                .{err},
+            );
+            return InitializationError.CouldNotCreateSwapchain;
+        },
     }
 
     vulkan.swapchain_images = try allocator.alloc(
@@ -407,14 +480,20 @@ fn createSwapchain(
                 .{},
             );
         },
-        else => |err| try handleVulkanError(err),
+        else => |err| {
+            std.log.err(
+                "vulkan error while retrieving swapchain images: {d}",
+                .{err},
+            );
+            return InitializationError.CouldNotCreateSwapchain;
+        },
     }
 }
 
 fn createImageViews(
     vulkan: *Vulkan,
     allocator: std.mem.Allocator,
-) !void {
+) InitializationError!void {
     var create_info: c.VkImageViewCreateInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .viewType = c.VK_IMAGE_VIEW_TYPE_2D,
@@ -443,7 +522,13 @@ fn createImageViews(
             &vulkan.swapchain_image_views.?.ptr[i],
         )) {
             c.VK_SUCCESS => {},
-            else => |err| try handleVulkanError(err),
+            else => |err| {
+                std.log.err(
+                    "vulkan error while creating image views: {d}",
+                    .{err},
+                );
+                return InitializationError.CouldNotCreateImageViews;
+            },
         }
     }
 }
@@ -461,7 +546,13 @@ fn ChoosePresentMode(
         null,
     )) {
         c.VK_SUCCESS, c.VK_INCOMPLETE => {},
-        else => |err| try handleVulkanError(err),
+        else => |err| {
+            std.log.err(
+                "vulkan error while enumerating present modes: {d}",
+                .{err},
+            );
+            return error.CouldNotChoosePresentMode;
+        },
     }
 
     var available_present_modes = try allocator.alloc(
@@ -480,7 +571,13 @@ fn ChoosePresentMode(
         c.VK_INCOMPLETE => {
             std.log.warn("Unable to retrieve all present modes", .{});
         },
-        else => |err| try handleVulkanError(err),
+        else => |err| {
+            std.log.err(
+                "vulkan error while retrieving present modes: {d}",
+                .{err},
+            );
+            return error.CouldNotChoosePresentMode;
+        },
     }
 
     for (available_present_modes) |mode| {
@@ -506,7 +603,13 @@ fn ChooseSurfaceFormat(
         null,
     )) {
         c.VK_SUCCESS, c.VK_INCOMPLETE => {},
-        else => |err| try handleVulkanError(err),
+        else => |err| {
+            std.log.err(
+                "vulkan error while enumerating surface formats: {d}",
+                .{err},
+            );
+            return error.CouldNotChooseSurfaceFormat;
+        },
     }
 
     var available_surface_format_info = try allocator.alloc(
@@ -531,7 +634,13 @@ fn ChooseSurfaceFormat(
         c.VK_INCOMPLETE => {
             std.log.warn("Unable to retrieve all surface formats", .{});
         },
-        else => |err| try handleVulkanError(err),
+        else => |err| {
+            std.log.err(
+                "vulkan error while retrieving surface formats: {d}",
+                .{err},
+            );
+            return error.CouldNotChooseSurfaceFormat;
+        },
     }
 
     for (available_surface_format_info) |info| {
@@ -545,7 +654,7 @@ fn ChooseSurfaceFormat(
     return available_surface_format_info[0];
 }
 
-fn pickPhysicalDevice(vulkan: *Vulkan, allocator: std.mem.Allocator) !void {
+fn pickPhysicalDevice(vulkan: *Vulkan, allocator: std.mem.Allocator) InitializationError!void {
     var available_device_count: u32 = 0;
 
     switch (c.vkEnumeratePhysicalDevices(
@@ -554,7 +663,13 @@ fn pickPhysicalDevice(vulkan: *Vulkan, allocator: std.mem.Allocator) !void {
         null,
     )) {
         c.VK_SUCCESS, c.VK_INCOMPLETE => {},
-        else => |err| try handleVulkanError(err),
+        else => |err| {
+            std.log.err(
+                "vulkan error while enumerating physical devices: {d}",
+                .{err},
+            );
+            return InitializationError.CouldNotPickPhysicalDevice;
+        },
     }
 
     var available_devices = try allocator.alloc(
@@ -572,7 +687,13 @@ fn pickPhysicalDevice(vulkan: *Vulkan, allocator: std.mem.Allocator) !void {
         c.VK_INCOMPLETE => {
             std.log.warn("Unable to retrieve all physical devices", .{});
         },
-        else => |err| try handleVulkanError(err),
+        else => |err| {
+            std.log.err(
+                "vulkan error while retrieving physical devices: {d}",
+                .{err},
+            );
+            return InitializationError.CouldNotPickPhysicalDevice;
+        },
     }
 
     const found_suitable_gpu = for (available_devices) |d| {
@@ -633,7 +754,13 @@ fn pickPhysicalDevice(vulkan: *Vulkan, allocator: std.mem.Allocator) !void {
             null,
         )) {
             c.VK_SUCCESS, c.VK_INCOMPLETE => {},
-            else => |err| try handleVulkanError(err),
+            else => |err| {
+                std.log.err(
+                    "vulkan error while enumerating device extensions: {d}",
+                    .{err},
+                );
+                return InitializationError.CouldNotPickPhysicalDevice;
+            },
         }
 
         var available_extension_properties = try allocator.alloc(
@@ -652,7 +779,13 @@ fn pickPhysicalDevice(vulkan: *Vulkan, allocator: std.mem.Allocator) !void {
             c.VK_INCOMPLETE => {
                 std.log.warn("Unable to retrieve all physical devices", .{});
             },
-            else => |err| try handleVulkanError(err),
+            else => |err| {
+                std.log.err(
+                    "vulkan error while retrieving device extensions: {d}",
+                    .{err},
+                );
+                return InitializationError.CouldNotPickPhysicalDevice;
+            },
         }
 
         var found = std.bit_set.StaticBitSet(device_extensions.len).initEmpty();
@@ -676,7 +809,7 @@ fn pickPhysicalDevice(vulkan: *Vulkan, allocator: std.mem.Allocator) !void {
     } else false;
 
     if (!found_suitable_gpu) {
-        return error.SuitableGpuNotFound;
+        return InitializationError.CouldNotPickPhysicalDevice;
     }
 }
 
@@ -705,7 +838,7 @@ fn setupDebugMessenger(vulkan: *Vulkan) !void {
                 "vkCreateDebugUtilsMessengerEXT",
             ),
         );
-    if (CreateDebugMessenger == null) return error.ExtensionNotPresent;
+    if (CreateDebugMessenger == null) return InitializationError.CouldNotCreateDebugMessenger;
 
     switch (CreateDebugMessenger.?(
         vulkan.instance,
@@ -714,11 +847,17 @@ fn setupDebugMessenger(vulkan: *Vulkan) !void {
         &vulkan.debug_messenger,
     )) {
         c.VK_SUCCESS => {},
-        else => |err| try handleVulkanError(err),
+        else => |err| {
+            std.log.err(
+                "vulkan error while creating debug messenger: {d}",
+                .{err},
+            );
+            return InitializationError.CouldNotCreateDebugMessenger;
+        },
     }
 }
 
-fn createLogicalDevice(vulkan: *Vulkan, allocator: std.mem.Allocator) !void {
+fn createLogicalDevice(vulkan: *Vulkan, allocator: std.mem.Allocator) InitializationError!void {
     const queue_families = try vulkan.getPhysicalDeviceQueueFamilies(allocator);
     defer allocator.free(queue_families);
 
@@ -731,7 +870,7 @@ fn createLogicalDevice(vulkan: *Vulkan, allocator: std.mem.Allocator) !void {
             if (supports_graphics) {
                 break @intCast(i);
             }
-        } else return error.NoGraphicsQueueFamilyFound;
+        } else return InitializationError.CouldNotCreateLogicalDevice;
 
     vulkan.present_family =
         if (try vulkan.getSurfaceSupport(vulkan.graphics_family))
@@ -762,7 +901,7 @@ fn createLogicalDevice(vulkan: *Vulkan, allocator: std.mem.Allocator) !void {
                     vulkan.present_family = @truncate(i);
                     break;
                 }
-            } else return error.NoPresentQueueFamilyFound;
+            } else return InitializationError.CouldNotCreateLogicalDevice;
         }
     }
 
@@ -810,7 +949,13 @@ fn createLogicalDevice(vulkan: *Vulkan, allocator: std.mem.Allocator) !void {
         &vulkan.device,
     )) {
         c.VK_SUCCESS => {},
-        else => |err| try handleVulkanError(err),
+        else => |err| {
+            std.log.err(
+                "vulkan error while retrieving surface support: {d}",
+                .{err},
+            );
+            return InitializationError.CouldNotCreateLogicalDevice;
+        },
     }
 
     c.vkGetDeviceQueue(
@@ -831,7 +976,7 @@ fn createLogicalDevice(vulkan: *Vulkan, allocator: std.mem.Allocator) !void {
 fn getPhysicalDeviceQueueFamilies(
     vulkan: *Vulkan,
     allocator: std.mem.Allocator,
-) ![]c.VkQueueFamilyProperties2 {
+) InitializationError![]c.VkQueueFamilyProperties2 {
     var queue_family_property_count: u32 = 0;
 
     c.vkGetPhysicalDeviceQueueFamilyProperties2(
@@ -861,7 +1006,7 @@ fn getPhysicalDeviceQueueFamilies(
     return queue_families;
 }
 
-fn getSurfaceSupport(vulkan: *Vulkan, index: u32) !bool {
+fn getSurfaceSupport(vulkan: *Vulkan, index: u32) InitializationError!bool {
     var has_surface_support: c.VkBool32 = c.VK_FALSE;
 
     switch (c.vkGetPhysicalDeviceSurfaceSupportKHR(
@@ -871,7 +1016,13 @@ fn getSurfaceSupport(vulkan: *Vulkan, index: u32) !bool {
         &has_surface_support,
     )) {
         c.VK_SUCCESS => {},
-        else => |err| try handleVulkanError(err),
+        else => |err| {
+            std.log.err(
+                "vulkan error while retrieving surface support: {d}",
+                .{err},
+            );
+            return InitializationError.CouldNotGetSurfaceSupport;
+        },
     }
 
     if (has_surface_support == c.VK_TRUE) {
@@ -902,55 +1053,6 @@ fn debugCallback(
     return 0;
 }
 
-inline fn handleVulkanError(result: c.VkResult) !void {
-    switch (result) {
-        c.VK_ERROR_OUT_OF_HOST_MEMORY => return error.OutOfHostMemory,
-        c.VK_ERROR_OUT_OF_DEVICE_MEMORY => return error.OutOfDeviceMemory,
-        c.VK_ERROR_INITIALIZATION_FAILED => return error.InitializationFailed,
-        c.VK_ERROR_DEVICE_LOST => return error.DeviceLost,
-        c.VK_ERROR_MEMORY_MAP_FAILED => return error.MemoryMapFailed,
-        c.VK_ERROR_LAYER_NOT_PRESENT => return error.LayerNotPresent,
-        c.VK_ERROR_EXTENSION_NOT_PRESENT => return error.ExtensionNotPresent,
-        c.VK_ERROR_FEATURE_NOT_PRESENT => return error.FeatureNotPresent,
-        c.VK_ERROR_INCOMPATIBLE_DRIVER => return error.IncompatibleDriver,
-        c.VK_ERROR_TOO_MANY_OBJECTS => return error.TooManyObjects,
-        c.VK_ERROR_FORMAT_NOT_SUPPORTED => return error.FormatNotSupported,
-        c.VK_ERROR_FRAGMENTED_POOL => return error.FragmentedPool,
-        c.VK_ERROR_UNKNOWN => return error.Unknown,
-        c.VK_ERROR_VALIDATION_FAILED => return error.ValidationFailed,
-        c.VK_ERROR_OUT_OF_POOL_MEMORY => return error.OutOfPoolMemory,
-        c.VK_ERROR_INVALID_EXTERNAL_HANDLE => return error.InvalidExternalHandle,
-        c.VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS => return error.InvalidOpaqueCaptureAddress,
-        c.VK_ERROR_FRAGMENTATION => return error.Fragmentation,
-        c.VK_PIPELINE_COMPILE_REQUIRED => return error.PipelineCompileRequired,
-        c.VK_ERROR_NOT_PERMITTED => return error.NotPermitted,
-        c.VK_ERROR_SURFACE_LOST_KHR => return error.SurfaceLostKhr,
-        c.VK_ERROR_NATIVE_WINDOW_IN_USE_KHR => return error.NativeWindowInUseKhr,
-        c.VK_SUBOPTIMAL_KHR => return error.SuboptimalKhr,
-        c.VK_ERROR_OUT_OF_DATE_KHR => return error.OutOfDateKhr,
-        c.VK_ERROR_INCOMPATIBLE_DISPLAY_KHR => return error.IncompatibleDisplayKhr,
-        c.VK_ERROR_INVALID_SHADER_NV => return error.InvalidShaderNv,
-        c.VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR => return error.ImageUsageNotSupportedKhr,
-        c.VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR => return error.VideoPictureLayoutNotSupportedKhr,
-        c.VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR => return error.VideoProfileOperationNotSupportedKhr,
-        c.VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR => return error.VideoProfileFormatNotSupportedKhr,
-        c.VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR => return error.VideoProfileCodecNotSupportedKhr,
-        c.VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR => return error.VideoStdVersionNotSupportedKhr,
-        c.VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT => return error.InvalidDrmFormatModifierPlaneLayoutExt,
-        c.VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT => return error.FullScreenExclusiveModeLostExt,
-        c.VK_THREAD_IDLE_KHR => return error.ThreadIdleKhr,
-        c.VK_THREAD_DONE_KHR => return error.ThreadDoneKhr,
-        c.VK_OPERATION_DEFERRED_KHR => return error.OperationDeferredKhr,
-        c.VK_OPERATION_NOT_DEFERRED_KHR => return error.OperationNotDeferredKhr,
-        c.VK_ERROR_INVALID_VIDEO_STD_PARAMETERS_KHR => return error.InvalidVideoStdParametersKhr,
-        c.VK_ERROR_COMPRESSION_EXHAUSTED_EXT => return error.CompressionExhaustedExt,
-        c.VK_INCOMPATIBLE_SHADER_BINARY_EXT => return error.IncompatibleShaderBinaryExt,
-        c.VK_PIPELINE_BINARY_MISSING_KHR => return error.PipelineBinaryMissingKhr,
-        c.VK_ERROR_NOT_ENOUGH_SPACE_KHR => return error.NotEnoughSpaceKhr,
-        else => return error.Unknown,
-    }
-}
-
 pub const Config = struct {
     debug: bool = true,
     required_extensions: *std.ArrayList([*:0]const u8),
@@ -970,3 +1072,20 @@ const device_extensions = [_][*:0]const u8{
     c.VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
     c.VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
 };
+
+const InitializationError = error{
+    CouldNotCreateInstance,
+    CouldNotCreateSurface,
+    CouldNotCreateSwapchain,
+    CouldNotPickPhysicalDevice,
+    CouldNotChooseSurfaceFormat,
+    CouldNotCreateImageViews,
+    CouldNotCreateDebugMessenger,
+    CouldNotCreateLogicalDevice,
+    CouldNotGetQueueFamilies,
+    CouldNotGetSurfaceSupport,
+    CouldNotGetDimensions,
+    CouldNotChoosePresentMode,
+    MissingRequiredExtension,
+    MissingRequiredLayer,
+} || error{OutOfMemory};
